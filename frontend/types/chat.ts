@@ -4,6 +4,7 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   workflowSteps?: string[];
+  kind?: "normal" | "error";
 }
 
 export interface ChatSession {

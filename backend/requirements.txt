@@ -5,7 +5,14 @@ groq==0.13.0
 tavily-python==0.5.0
 pinecone==5.4.2
 pydantic==2.9.2
+
+# LangChain/Groq + LangGraph versions used by this codebase.
+# Note: These may conflict with globally installed LangChain 1.x packages
+# when not using a virtual environment.
+langchain-core==0.3.84
 langgraph==0.2.60
 langchain-groq==0.2.1
-weasyprint==63.1
+
+# Optional: WeasyPrint needs native GTK/Pango libs on Windows.
+weasyprint==63.1; platform_system != "Windows"
 markdown==3.7

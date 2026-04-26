@@ -5,7 +5,13 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pinecone import Pinecone
 from tavily import TavilyClient
-from weasyprint import HTML
+
+# WeasyPrint is optional on Windows (requires external GTK/Pango libs).
+# Import it lazily so the API can boot even when those DLLs are missing.
+try:
+    from weasyprint import HTML  # type: ignore
+except Exception:  # pragma: no cover
+    HTML = None  # type: ignore
 
 from .config import get_settings
 from .graph import build_research_graph
@@ -167,6 +173,16 @@ def chat(request: ChatRequest) -> ChatResponse:
 
 @app.post("/api/generate-pdf")
 def generate_pdf(request: PDFRequest) -> Response:
+    if HTML is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "PDF generation is unavailable because WeasyPrint could not load its "
+                "native dependencies (GTK/Pango/GObject). Install the required system libraries "
+                "and restart the backend."
+            ),
+        )
+
     try:
         html_doc = _markdown_to_html(request.markdown)
         pdf_bytes = HTML(string=html_doc).write_pdf()

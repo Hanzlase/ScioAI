@@ -2,18 +2,23 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Bot,
   CheckCircle2,
   Download,
-  FilePenLine,
   LoaderCircle,
-  Search,
+  RotateCcw,
+  ScanSearch,
   SendHorizontal,
-  ShieldCheck,
+  Sparkles,
+  User,
+  Zap,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { ChatSession } from "@/types/chat";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 interface ChatWindowProps {
   sessionId: string | null;
@@ -21,25 +26,10 @@ interface ChatWindowProps {
   onSendMessage: (query: string, sessionId: string) => Promise<void>;
 }
 
-const stageConfig = [
-  {
-    key: "researcher",
-    label: "Researcher is gathering data...",
-    Icon: Search,
-    color: "text-cyan-700",
-  },
-  {
-    key: "writer",
-    label: "Writer is drafting...",
-    Icon: FilePenLine,
-    color: "text-orange-700",
-  },
-  {
-    key: "critic",
-    label: "Critic is verifying...",
-    Icon: ShieldCheck,
-    color: "text-emerald-700",
-  },
+const loadingStages = [
+  { label: "Agents analyzing request…", icon: Zap },
+  { label: "Searching web & vector store…", icon: ScanSearch },
+  { label: "Drafting & reviewing report…", icon: Sparkles },
 ] as const;
 
 const parseFilename = (headerValue: string | null): string | null => {
@@ -48,14 +38,30 @@ const parseFilename = (headerValue: string | null): string | null => {
   return match?.[1] ?? null;
 };
 
-const headingFilename = (markdownText: string): string => {
-  const heading = /^#\s+(.+)$/m.exec(markdownText)?.[1] ?? "scioai-report";
-  const safe = heading
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
+const buildDownloadBaseName = (sessionTitle: string | undefined) => {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\..+$/, "")
+    .replace("T", "-");
+  const slug = (sessionTitle ?? "Report")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-  return safe || "scioai-report";
+    .slice(0, 40);
+  return `ScioAI-${slug || "Report"}-${timestamp}`;
+};
+
+const agentStepLabels: Record<string, string> = {
+  researcher: "Researcher",
+  writer: "Writer",
+  critic: "Critic",
+};
+
+const agentStepColors: Record<string, string> = {
+  researcher: "badge-brand",
+  writer: "badge-accent",
+  critic: "badge-green",
 };
 
 export default function ChatWindow({ sessionId, session, onSendMessage }: ChatWindowProps) {
@@ -65,21 +71,42 @@ export default function ChatWindow({ sessionId, session, onSendMessage }: ChatWi
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  /* Reset on session change */
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [session?.messages.length, isLoading]);
+    setQuery("");
+    setIsLoading(false);
+    setStageIndex(0);
+    setDownloadingIndex(null);
+    setPdfError(null);
+  }, [sessionId]);
 
+  /* Scroll to bottom on new content */
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [session?.messages.length, isLoading, stageIndex]);
+
+  /* Cycle loading stages */
   useEffect(() => {
     if (!isLoading) return;
     setStageIndex(0);
-
     const interval = setInterval(() => {
-      setStageIndex((prev) => (prev < stageConfig.length - 1 ? prev + 1 : prev));
-    }, 1250);
-
+      setStageIndex((prev) => (prev < loadingStages.length - 1 ? prev + 1 : prev));
+    }, 1800);
     return () => clearInterval(interval);
   }, [isLoading]);
+
+  /* Auto-resize textarea */
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  }, [query]);
 
   const canSend = useMemo(
     () => Boolean(query.trim()) && Boolean(sessionId) && !isLoading,
@@ -97,12 +124,10 @@ export default function ChatWindow({ sessionId, session, onSendMessage }: ChatWi
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canSend || !sessionId) return;
-
     const text = query.trim();
     setQuery("");
     setIsLoading(true);
     setPdfError(null);
-
     try {
       await onSendMessage(text, sessionId);
     } finally {
@@ -110,30 +135,33 @@ export default function ChatWindow({ sessionId, session, onSendMessage }: ChatWi
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (canSend && sessionId) {
+        const text = query.trim();
+        setQuery("");
+        setIsLoading(true);
+        setPdfError(null);
+        onSendMessage(text, sessionId).finally(() => setIsLoading(false));
+      }
+    }
+  };
+
   const handleDownloadPdf = async (markdownText: string, index: number) => {
     setPdfError(null);
     setDownloadingIndex(index);
-
     try {
-      const fallbackName = headingFilename(markdownText);
-      const response = await fetch("http://localhost:8000/api/generate-pdf", {
+      const baseName = buildDownloadBaseName(session?.title);
+      const response = await fetch(`${API_BASE_URL}/api/generate-pdf`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          markdown: markdownText,
-          filename: fallbackName,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markdown: markdownText, filename: baseName }),
       });
-
-      if (!response.ok) {
-        throw new Error(`PDF request failed with status ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error("The report could not be exported right now. Please retry.");
       const blob = await response.blob();
-      const fileName =
-        parseFilename(response.headers.get("content-disposition")) ?? `${fallbackName}.pdf`;
+      const nameFromHeader = parseFilename(response.headers.get("content-disposition"));
+      const fileName = nameFromHeader ?? `${baseName}.pdf`;
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
@@ -143,136 +171,328 @@ export default function ChatWindow({ sessionId, session, onSendMessage }: ChatWi
       link.remove();
       URL.revokeObjectURL(blobUrl);
     } catch (error) {
-      setPdfError(error instanceof Error ? error.message : "Failed to download PDF.");
+      setPdfError(
+        error instanceof Error
+          ? error.message
+          : "The report could not be exported right now. Please retry.",
+      );
     } finally {
       setDownloadingIndex(null);
     }
   };
 
+  /* ── Empty state ── */
+  if (!session || session.messages.length === 0) {
+    return (
+      <section className="flex h-full flex-col overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-glass">
+        {/* Chat header */}
+        <ChatHeader session={session} />
+
+        {/* Empty state */}
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl brand-gradient shadow-glass-md">
+            <Sparkles size={30} className="text-white" />
+          </div>
+          <div>
+            <h2 className="font-heading text-xl font-bold text-slate-900">
+              Start a Research Session
+            </h2>
+            <p className="mt-2 max-w-sm text-sm text-slate-500">
+              Ask ScioAI anything. Our agents will research the web, retrieve relevant context, and deliver
+              a citation-grounded report.
+            </p>
+          </div>
+
+          {/* Suggestion chips */}
+          <div className="flex flex-wrap justify-center gap-2">
+            {[
+              "What are the latest advances in quantum computing?",
+              "Explain the impact of AI on healthcare diagnostics.",
+              "Summarize the current state of renewable energy.",
+            ].map((suggestion) => (
+              <button
+                key={suggestion}
+                className="rounded-xl border border-surface-200 bg-surface-50 px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                onClick={() => {
+                  if (sessionId) {
+                    setQuery(suggestion);
+                    textareaRef.current?.focus();
+                  }
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Input */}
+        <ChatInput
+          query={query}
+          setQuery={setQuery}
+          canSend={canSend}
+          isLoading={isLoading}
+          textareaRef={textareaRef}
+          onSubmit={handleSubmit}
+          onKeyDown={handleKeyDown}
+        />
+      </section>
+    );
+  }
+
   return (
-    <section className="relative flex h-full flex-col rounded-3xl border border-cyan-200 bg-white/80 shadow-glass">
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
-        {session?.messages.map((message, index) => {
+    <section className="flex h-full flex-col overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-glass">
+      {/* Chat header */}
+      <ChatHeader session={session} />
+
+      {/* Messages */}
+      <div className="flex-1 space-y-5 overflow-y-auto p-5">
+        {session.messages.map((message, index) => {
           const isUser = message.role === "user";
+          const isError = message.kind === "error";
           const isLatestAi = !isUser && index === lastAiMessageIndex;
 
           return (
-            <div key={`${index}-${message.role}`} className={isUser ? "ml-auto max-w-[82%]" : "mr-auto max-w-[84%]"}>
+            <div
+              key={`${index}-${message.role}`}
+              className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+            >
+              {/* Avatar */}
               <div
-                className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-sm ${
                   isUser
-                    ? "border border-cyan-300 bg-cyan-100 text-cyan-950"
-                    : "border border-emerald-300 bg-emerald-100 text-emerald-950"
+                    ? "bg-slate-900 text-white"
+                    : isError
+                      ? "bg-rose-100 text-rose-600"
+                      : "brand-gradient text-white"
                 }`}
               >
-                {isUser ? (
-                  message.content
-                ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} className="scio-markdown">
-                    {message.content}
-                  </ReactMarkdown>
-                )}
+                {isUser ? <User size={14} /> : <Bot size={14} />}
               </div>
 
-              {!isUser && message.workflowSteps && message.workflowSteps.length > 0 ? (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-                  {message.workflowSteps.map((step) => (
-                    <span
-                      key={`${index}-${step}`}
-                      className="rounded-full border border-cyan-300 bg-cyan-50 px-2 py-1 font-semibold text-cyan-800"
-                    >
-                      {step}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-
-              {isLatestAi ? (
-                <button
-                  onClick={() => handleDownloadPdf(message.content, index)}
-                  disabled={downloadingIndex === index}
-                  className="mt-3 inline-flex items-center gap-2 rounded-xl border border-fuchsia-500 bg-fuchsia-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-fuchsia-600 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-300"
+              <div className={`flex max-w-[82%] flex-col gap-2 ${isUser ? "items-end" : "items-start"}`}>
+                {/* Bubble */}
+                <div
+                  className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                    isUser
+                      ? "rounded-tr-sm bg-slate-900 text-white"
+                      : isError
+                        ? "rounded-tl-sm border border-rose-200 bg-rose-50 text-rose-800"
+                        : "rounded-tl-sm border border-surface-200 bg-surface-50 text-slate-800"
+                  }`}
                 >
-                  {downloadingIndex === index ? (
-                    <>
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                      Building PDF...
-                    </>
+                  {isUser || isError ? (
+                    message.content
                   ) : (
-                    <>
-                      <Download className="h-4 w-4" />
-                      Download Report (PDF)
-                    </>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      className="scio-markdown prose prose-sm max-w-none"
+                    >
+                      {message.content}
+                    </ReactMarkdown>
                   )}
-                </button>
-              ) : null}
+                </div>
+
+                {/* Workflow step pills */}
+                {!isUser && !isError && message.workflowSteps && message.workflowSteps.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {message.workflowSteps.map((step) => (
+                      <span
+                        key={`${index}-${step}`}
+                        className={`step-pill done ${agentStepColors[step] ?? "badge-brand"}`}
+                      >
+                        <CheckCircle2 size={10} />
+                        {agentStepLabels[step] ?? step}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* PDF Download (latest AI only) */}
+                {isLatestAi && !isError && (
+                  <button
+                    onClick={() => handleDownloadPdf(message.content, index)}
+                    disabled={downloadingIndex === index}
+                    id="download-pdf-btn"
+                    className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {downloadingIndex === index ? (
+                      <>
+                        <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                        Generating PDF…
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-3.5 w-3.5" />
+                        Download Report (PDF)
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
 
-        {isLoading ? (
-          <div className="mr-auto w-full max-w-[78%] rounded-2xl border border-fuchsia-300 bg-fuchsia-100 px-4 py-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-fuchsia-900">
-              <LoaderCircle className="h-5 w-5 animate-spin text-fuchsia-700" />
-              LangGraph pipeline running...
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="flex gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full brand-gradient text-white shadow-sm">
+              <Bot size={14} />
             </div>
-
-            <div className="space-y-2">
-              {stageConfig.map((stage, idx) => {
-                const Icon = stage.Icon;
-                const isDone = idx < stageIndex;
-                const isActive = idx === stageIndex;
-                return (
-                  <div
-                    key={stage.key}
-                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
-                      isActive
-                        ? "border-cyan-300 bg-cyan-50 text-cyan-900"
-                        : "border-pink-200 bg-pink-50/70 text-slate-600"
-                    }`}
-                  >
-                    {isDone ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    ) : (
-                      <Icon className={`h-4 w-4 ${stage.color} ${isActive ? "animate-pulse" : ""}`} />
-                    )}
-                    <span>{stage.label}</span>
-                  </div>
-                );
-              })}
+            <div className="max-w-sm rounded-2xl rounded-tl-sm border border-brand-200 bg-white p-4 shadow-card">
+              <div className="mb-3 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 animate-pulse text-indigo-500" />
+                <span className="text-xs font-semibold text-indigo-700">
+                  Multi-agent pipeline running
+                </span>
+              </div>
+              <div className="space-y-2">
+                {loadingStages.map(({ label, icon: Icon }, idx) => {
+                  const isDone = idx < stageIndex;
+                  const isActive = idx === stageIndex;
+                  return (
+                    <div
+                      key={label}
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs transition ${
+                        isDone
+                          ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : isActive
+                            ? "border border-brand-200 bg-brand-50 text-brand-700"
+                            : "border border-surface-100 bg-surface-50 text-slate-400"
+                      }`}
+                    >
+                      {isDone ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : (
+                        <Icon
+                          className={`h-3.5 w-3.5 ${isActive ? "animate-pulse text-indigo-500" : "text-slate-300"}`}
+                        />
+                      )}
+                      <span>{label}</span>
+                      {isActive && (
+                        <span className="ml-auto flex gap-1">
+                          <span className="loading-dot animate-dot-1" />
+                          <span className="loading-dot animate-dot-2" />
+                          <span className="loading-dot animate-dot-3" />
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        ) : null}
+        )}
 
-        {pdfError ? (
-          <div className="mr-auto max-w-[78%] rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-            PDF download error: {pdfError}
+        {/* PDF error */}
+        {pdfError && (
+          <div className="mx-auto flex max-w-sm items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-700">
+            <RotateCcw size={12} />
+            {pdfError}
           </div>
-        ) : null}
+        )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      <form
+      {/* Input */}
+      <ChatInput
+        query={query}
+        setQuery={setQuery}
+        canSend={canSend}
+        isLoading={isLoading}
+        textareaRef={textareaRef}
         onSubmit={handleSubmit}
-        className="sticky bottom-0 mt-auto flex items-end gap-3 rounded-b-3xl border-t border-cyan-200 bg-gradient-to-r from-cyan-50 via-white to-amber-50 p-4"
-      >
+        onKeyDown={handleKeyDown}
+      />
+    </section>
+  );
+}
+
+/* ── Sub-components ── */
+
+function ChatHeader({ session }: { session: ChatSession | null }) {
+  return (
+    <div className="flex items-center gap-3 border-b border-surface-100 px-5 py-4">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl brand-gradient shadow-sm">
+        <Sparkles size={16} className="text-white" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate font-heading text-base font-bold text-slate-900">
+          {session?.title ?? "ScioAI Research Agent"}
+        </h1>
+        <p className="text-xs text-slate-500">
+          Researcher · Writer · Critic · Llama 3.3 70B
+        </p>
+      </div>
+      {/* Status pill */}
+      <span className="badge badge-green shrink-0">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        Online
+      </span>
+    </div>
+  );
+}
+
+interface ChatInputProps {
+  query: string;
+  setQuery: (v: string) => void;
+  canSend: boolean;
+  isLoading: boolean;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+}
+
+function ChatInput({
+  query,
+  setQuery,
+  canSend,
+  isLoading,
+  textareaRef,
+  onSubmit,
+  onKeyDown,
+}: ChatInputProps) {
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="border-t border-surface-100 bg-surface-50 px-4 py-3"
+    >
+      <div className="flex items-end gap-3 rounded-2xl border border-surface-200 bg-white px-4 py-3 shadow-sm transition focus-within:border-brand-300 focus-within:shadow-card">
         <textarea
+          ref={textareaRef}
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onKeyDown}
           disabled={isLoading}
-          placeholder="Ask ScioAI to research a topic..."
-          rows={2}
-          className="max-h-40 min-h-[52px] flex-1 resize-y rounded-2xl border border-cyan-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-500 focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-200 disabled:cursor-not-allowed disabled:opacity-75"
+          placeholder="Ask ScioAI to research a topic… (Enter to send, Shift+Enter for newline)"
+          rows={1}
+          id="chat-input"
+          className="flex-1 resize-none bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-70"
+          style={{ minHeight: "24px", maxHeight: "160px" }}
         />
         <button
           type="submit"
           disabled={!canSend}
-          className="flex h-[52px] w-[52px] items-center justify-center rounded-2xl border border-fuchsia-500 bg-fuchsia-500 text-white transition hover:bg-fuchsia-600 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-300"
+          id="chat-send-btn"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40"
+          style={{
+            background: canSend
+              ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
+              : "#cbd5e1",
+          }}
         >
-          <SendHorizontal size={18} />
+          {isLoading ? (
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+          ) : (
+            <SendHorizontal size={16} />
+          )}
         </button>
-      </form>
-    </section>
+      </div>
+      <p className="mt-1.5 text-center text-[10px] text-slate-400">
+        ScioAI may produce errors. Verify important information.
+      </p>
+    </form>
   );
 }
