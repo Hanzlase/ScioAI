@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Bot,
   CheckCircle2,
+  Download,
   LoaderCircle,
   Menu,
+  RotateCcw,
   ScanSearch,
   SendHorizontal,
   Sparkles,
@@ -18,6 +20,7 @@ import remarkGfm from "remark-gfm";
 
 import { ChatSession } from "@/types/chat";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 interface ChatWindowProps {
   sessionId: string | null;
@@ -38,18 +41,45 @@ const agentStepLabels: Record<string, string> = {
   critic:     "Critic",
 };
 
+const parseFilename = (h: string | null) => {
+  if (!h) return null;
+  return /filename="([^"]+)"/i.exec(h)?.[1] ?? null;
+};
+
+const buildBaseName = (title?: string) => {
+  const ts = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
+  const slug = (title ?? "Report")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return `ScioAI-${slug || "Report"}-${ts}`;
+};
+
+const getMessageTitle = (msg: string) => {
+  const h = /^\s*#\s+(.+)$/m.exec(msg)?.[1]?.trim();
+  if (h) return h;
+  const firstLine = msg
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find((l) => l.length > 0) ?? "Report";
+  return firstLine.slice(0, 60);
+};
+
 /* ─────────────────────────────────────────────────── */
 
 export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSidebar }: ChatWindowProps) {
   const [query, setQuery]             = useState("");
   const [isLoading, setIsLoading]     = useState(false);
   const [stageIndex, setStageIndex]   = useState(0);
+  const [dlIndex, setDlIndex]         = useState<number | null>(null);
+  const [pdfError, setPdfError]       = useState<string | null>(null);
   const messagesEndRef                = useRef<HTMLDivElement | null>(null);
   const textareaRef                   = useRef<HTMLTextAreaElement>(null);
 
   /* Reset on session change */
   useEffect(() => {
-    setQuery(""); setIsLoading(false); setStageIndex(0);
+    setQuery(""); setIsLoading(false); setStageIndex(0); setDlIndex(null); setPdfError(null);
   }, [sessionId]);
 
   /* Auto-scroll */
@@ -83,11 +113,19 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
     [query, sessionId, isLoading],
   );
 
+  const lastAiIdx = useMemo(() => {
+    if (!session) return -1;
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      if (session.messages[i].role === "ai") return i;
+    }
+    return -1;
+  }, [session]);
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!canSend || !sessionId) return;
     const text = query.trim();
-    setQuery(""); setIsLoading(true);
+    setQuery(""); setIsLoading(true); setPdfError(null);
     try { await onSendMessage(text, sessionId); } finally { setIsLoading(false); }
   };
 
@@ -96,9 +134,57 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
       e.preventDefault();
       if (canSend && sessionId) {
         const text = query.trim();
-        setQuery(""); setIsLoading(true);
+        setQuery(""); setIsLoading(true); setPdfError(null);
         onSendMessage(text, sessionId).finally(() => setIsLoading(false));
       }
+    }
+  };
+
+  const handleDownloadPdf = async (markdown: string, index: number) => {
+    setPdfError(null);
+    setDlIndex(index);
+    try {
+      const titleFromMsg = getMessageTitle(markdown);
+      const baseName = buildBaseName(titleFromMsg);
+      const msgEl = document.getElementById(`ai-message-${index}`);
+      const html = msgEl?.innerHTML;
+
+      const res = await fetch(`${API_BASE_URL}/api/generate-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markdown, filename: baseName, html }),
+      });
+
+      if (!res.ok) {
+        let detail = "";
+        try {
+          const data = (await res.json()) as { detail?: string };
+          detail = data?.detail ?? "";
+        } catch {
+          // ignore
+        }
+        throw new Error(detail ? `Export failed: ${detail}` : "Export failed. Please retry.");
+      }
+
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("application/pdf")) {
+        throw new Error("Export failed: server did not return a PDF.");
+      }
+
+      const blob = await res.blob();
+      const name = parseFilename(res.headers.get("content-disposition")) ?? `${baseName}.pdf`;
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "Export failed. Please retry.");
+    } finally {
+      setDlIndex(null);
     }
   };
 
@@ -190,11 +276,11 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
           <div className="space-y-6 p-4 sm:p-6 lg:p-8">
             <AnimatePresence initial={false}>
               {session.messages.map((msg, idx) => {
-                const isUser  = msg.role === "user";
-                const isError = msg.kind === "error";
+                const isUser   = msg.role === "user";
+                const isError  = msg.kind === "error";
 
                 return (
-                  <motion.div 
+                  <motion.div
                     key={`${idx}-${msg.role}`}
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -214,7 +300,8 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
 
                     <div className={`flex max-w-[85%] flex-col gap-2 ${isUser ? "items-end" : "items-start"}`}>
                       {/* Bubble */}
-                      <div className="rounded-2xl px-5 py-4 text-base leading-relaxed" 
+                      <div
+                        className="rounded-2xl px-5 py-4 text-base leading-relaxed"
                         style={{
                            background: isUser ? "var(--c-900)" : isError ? "var(--c-50)" : "#fff",
                            border: isUser ? "none" : "1px solid var(--c-200)",
@@ -226,24 +313,26 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
                         {isUser || isError ? (
                           <span className="whitespace-pre-wrap">{msg.content}</span>
                         ) : (
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            className="scio-markdown"
-                            components={{
-                              a: ({ href, children, ...props }) => (
-                                <a
-                                  href={href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  {...props}
-                                >
-                                  {children}
-                                </a>
-                              ),
-                            }}
-                          >
-                            {msg.content}
-                          </ReactMarkdown>
+                          <div id={`ai-message-${idx}`}>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              className="scio-markdown"
+                              components={{
+                                a: ({ href, children, ...props }) => (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    {...props}
+                                  >
+                                    {children}
+                                  </a>
+                                ),
+                              }}
+                            >
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
                         )}
                       </div>
 
@@ -259,7 +348,32 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
                         </div>
                       )}
 
-
+                      {/* PDF download */}
+                      {!isUser && !isError && (
+                        <motion.button
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.2 }}
+                          onClick={() => handleDownloadPdf(msg.content, idx)}
+                          disabled={dlIndex === idx}
+                          className="mt-2 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+                          style={{ borderColor: "var(--c-200)", background: "#fff", color: "var(--c-700)" }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = "var(--c-400)";
+                            e.currentTarget.style.color = "var(--c-900)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = "var(--c-200)";
+                            e.currentTarget.style.color = "var(--c-700)";
+                          }}
+                        >
+                          {dlIndex === idx ? (
+                            <><LoaderCircle className="h-4 w-4 animate-spin" />Generating PDF…</>
+                          ) : (
+                            <><Download className="h-4 w-4" />Download as PDF</>
+                          )}
+                        </motion.button>
+                      )}
                     </div>
                   </motion.div>
                 );
@@ -312,6 +426,19 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
                     })}
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {/* PDF error */}
+            {pdfError && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="ml-[3.25rem] flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium"
+                style={{ borderColor: "var(--c-200)", background: "var(--c-50)", color: "var(--c-700)" }}
+              >
+                <RotateCcw size={14} />
+                {pdfError}
               </motion.div>
             )}
 
