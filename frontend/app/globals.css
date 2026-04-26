@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-body), sans-serif;
+  color: #1f2937;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(254, 215, 170, 0.62), transparent 40%),
+    radial-gradient(circle at 85% 25%, rgba(103, 232, 249, 0.46), transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(244, 114, 182, 0.28), transparent 40%),
+    #fffef8;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading), sans-serif;
+}
+
+.scio-markdown {
+  color: #134e4a;
+  font-family: var(--font-body), sans-serif;
+}
+
+.scio-markdown > :first-child {
+  margin-top: 0;
+}
+
+.scio-markdown h1,
+.scio-markdown h2,
+.scio-markdown h3,
+.scio-markdown h4 {
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+  color: #0f766e;
+  font-family: var(--font-heading), sans-serif;
+  line-height: 1.2;
+}
+
+.scio-markdown h1 {
+  font-size: 1.35rem;
+}
+
+.scio-markdown h2 {
+  font-size: 1.2rem;
+}
+
+.scio-markdown h3 {
+  font-size: 1.05rem;
+}
+
+.scio-markdown p,
+.scio-markdown ul,
+.scio-markdown ol {
+  margin: 0.45rem 0;
+}
+
+.scio-markdown ul,
+.scio-markdown ol {
+  padding-left: 1.2rem;
+}
+
+.scio-markdown li::marker {
+  color: #f97316;
+}
+
+.scio-markdown blockquote {
+  margin: 0.7rem 0;
+  padding: 0.55rem 0.8rem;
+  border-left: 4px solid #fb923c;
+  background: #fff7ed;
+  color: #7c2d12;
+}
+
+.scio-markdown code {
+  border-radius: 4px;
+  background: #fef3c7;
+  padding: 0.08rem 0.3rem;
+  color: #9a3412;
+}
+
+.scio-markdown pre {
+  overflow-x: auto;
+  border-radius: 0.65rem;
+  background: #0f172a;
+  padding: 0.65rem 0.8rem;
+}
+
+.scio-markdown pre code {
+  background: transparent;
+  padding: 0;
+  color: #dbeafe;
+}
+
+.scio-markdown table {
+  margin: 0.7rem 0;
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.scio-markdown thead {
+  background: #cffafe;
+  color: #155e75;
+}
+
+.scio-markdown th,
+.scio-markdown td {
+  border: 1px solid #a5f3fc;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+.scio-markdown hr {
+  margin: 0.8rem 0;
+  border: none;
+  border-top: 1px solid #bae6fd;
+}
+
+.scio-markdown a {
+  color: #0284c7;
+  text-decoration: underline;
+  text-decoration-color: #7dd3fc;
+}
