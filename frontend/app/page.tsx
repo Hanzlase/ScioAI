@@ -102,7 +102,7 @@ export default function LandingPage() {
           {/* CTA + hamburger */}
           <div className="flex items-center gap-3">
             <motion.div whileHover={{ y: -1 }} whileTap={{ y: 0 }}>
-              <Link href="/app" className="btn-primary hidden sm:inline-flex">
+              <Link href="/dashboard" className="btn-primary hidden sm:inline-flex">
                 Launch App <ArrowRight size={15} />
               </Link>
             </motion.div>
@@ -140,7 +140,7 @@ export default function LandingPage() {
                     {l.label}
                   </a>
                 ))}
-                <Link href="/app" className="btn-primary mt-2 w-full justify-center">
+                <Link href="/dashboard" className="btn-primary mt-2 w-full justify-center">
                   Launch App <ArrowRight size={15} />
                 </Link>
               </div>
@@ -175,7 +175,7 @@ export default function LandingPage() {
 
           <motion.div {...up(0.24)} className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.2 }} className="w-full sm:w-auto">
-              <Link href="/app" className="btn-primary w-full px-8 py-3.5 text-base sm:w-auto">
+              <Link href="/dashboard" className="btn-primary w-full px-8 py-3.5 text-base sm:w-auto">
                 Start Researching <ArrowRight size={18} />
               </Link>
             </motion.div>
@@ -353,7 +353,7 @@ export default function LandingPage() {
             No setup required. Just ask ScioAI a question and get a grounded report.
           </p>
           <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.18 }} className="inline-flex">
-            <Link href="/app" className="btn-primary mt-8 inline-flex px-8 py-3.5 text-base">
+            <Link href="/dashboard" className="btn-primary mt-8 inline-flex px-8 py-3.5 text-base">
               Launch ScioAI <ArrowRight size={18} />
             </Link>
           </motion.div>

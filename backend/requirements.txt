@@ -1,17 +1,13 @@
 ﻿fastapi==0.115.2
 uvicorn[standard]==0.32.0
 python-dotenv==1.0.1
-groq==0.13.0
 tavily-python==0.5.0
 pinecone==5.4.2
 pydantic==2.9.2
 
-# LangChain/Groq + LangGraph versions used by this codebase.
-# Note: These may conflict with globally installed LangChain 1.x packages
-# when not using a virtual environment.
-langchain-core==0.3.84
+# LangChain + LangGraph
+langchain-core==0.3.90
 langgraph==0.2.60
-langchain-groq==0.2.1
 langchain-openai==0.3.6
 
 # Optional: WeasyPrint needs native GTK/Pango libs on Windows.
