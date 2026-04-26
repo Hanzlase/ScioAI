@@ -22,7 +22,7 @@ app = FastAPI(title="ScioAI Backend", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"http://localhost:\d+",
+    allow_origin_regex=r"(http://localhost:\d+|https://.*\.up\.railway\.app)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
