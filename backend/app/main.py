@@ -36,7 +36,11 @@ research_graph = build_research_graph(
     tavily_client=tavily_client,
     pinecone_client=pinecone_client,
     pinecone_index_name=settings.pinecone_index_name,
-    groq_api_key=settings.groq_api_key,
+    openrouter_api_key=settings.openrouter_api_key,
+    model_researcher=settings.model_researcher,
+    model_writer=settings.model_writer,
+    model_critic=settings.model_critic,
+    model_fallback=settings.model_fallback,
 )
 
 

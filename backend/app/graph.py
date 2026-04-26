@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from pinecone import Pinecone
 from tavily import TavilyClient
@@ -62,15 +62,35 @@ def build_research_graph(
     tavily_client: TavilyClient,
     pinecone_client: Pinecone,
     pinecone_index_name: str,
-    groq_api_key: str,
+    openrouter_api_key: str,
+    model_researcher: str,
+    model_writer: str,
+    model_critic: str,
+    model_fallback: str,
 ):
     index = pinecone_client.Index(pinecone_index_name)
-    llm = ChatGroq(
-        groq_api_key=groq_api_key,
-        model="llama-3.3-70b-versatile",
-        temperature=0.2,
-        max_tokens=1800,
-    )
+
+    def _llm(model: str, *, temperature: float, max_tokens: int) -> ChatOpenAI:
+        # OpenRouter is OpenAI-compatible.
+        return ChatOpenAI(
+            api_key=openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1",
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+    llm_researcher = _llm(model_researcher, temperature=0.2, max_tokens=1200)
+    llm_writer = _llm(model_writer, temperature=0.2, max_tokens=2200)
+    llm_critic = _llm(model_critic, temperature=0.15, max_tokens=2400)
+    llm_fallback = _llm(model_fallback, temperature=0.2, max_tokens=2200)
+
+    def _invoke_with_fallback(messages: list[Any], primary: ChatOpenAI) -> str:
+        try:
+            msg = primary.invoke(messages)
+        except Exception:
+            msg = llm_fallback.invoke(messages)
+        return msg.content if isinstance(msg.content, str) else str(msg.content)
 
     def researcher_node(state: ResearchGraphState) -> ResearchGraphState:
         query = state["user_query"]
@@ -85,9 +105,29 @@ def build_research_graph(
             f"{pinecone_context}"
         )
 
+        # Optional: let researcher model extract a tight plan/questions.
+        researcher_prompt = (
+            "You are the Researcher agent for ScioAI.\n"
+            "Given the question and evidence, extract: (1) key sub-questions, (2) a brief outline, "
+            "(3) any contradictions across sources. Keep it concise.\n"
+            "Return markdown." 
+        )
+        addendum = _invoke_with_fallback(
+            [
+                SystemMessage(content=researcher_prompt),
+                HumanMessage(
+                    content=(
+                        f"User Query:\n{state['user_query']}\n\n"
+                        f"Evidence:\n{research_data}"
+                    )
+                ),
+            ],
+            llm_researcher,
+        )
+
         return {
             **state,
-            "research_data": research_data,
+            "research_data": f"{research_data}\n\n## Researcher Notes\n{addendum}",
             "current_step": "research_complete",
             "workflow_steps": [*state.get("workflow_steps", []), "researcher"],
         }
@@ -115,7 +155,7 @@ def build_research_graph(
             "## Citations\n"
         )
 
-        draft_msg = llm.invoke(
+        draft = _invoke_with_fallback(
             [
                 SystemMessage(content=writer_prompt),
                 HumanMessage(
@@ -124,9 +164,9 @@ def build_research_graph(
                         f"Research Data:\n{state['research_data']}"
                     )
                 ),
-            ]
+            ],
+            llm_writer,
         )
-        draft = draft_msg.content if isinstance(draft_msg.content, str) else str(draft_msg.content)
 
         return {
             **state,
@@ -148,7 +188,7 @@ def build_research_graph(
             "Return only the improved markdown report."
         )
 
-        reviewed_msg = llm.invoke(
+        final_report = _invoke_with_fallback(
             [
                 SystemMessage(content=critic_prompt),
                 HumanMessage(
@@ -158,12 +198,8 @@ def build_research_graph(
                         f"Draft to review:\n{state['draft']}"
                     )
                 ),
-            ]
-        )
-        final_report = (
-            reviewed_msg.content
-            if isinstance(reviewed_msg.content, str)
-            else str(reviewed_msg.content)
+            ],
+            llm_critic,
         )
 
         return {
