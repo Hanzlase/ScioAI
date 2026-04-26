@@ -12,7 +12,3 @@ pydantic==2.9.2
 langchain-core==0.3.84
 langgraph==0.2.60
 langchain-groq==0.2.1
-
-# Optional: WeasyPrint needs native GTK/Pango libs on Windows.
-weasyprint==63.1
-markdown==3.7
