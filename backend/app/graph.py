@@ -69,18 +69,19 @@ def build_research_graph(
         groq_api_key=groq_api_key,
         model="llama-3.3-70b-versatile",
         temperature=0.2,
+        max_tokens=1800,
     )
 
     def researcher_node(state: ResearchGraphState) -> ResearchGraphState:
         query = state["user_query"]
-        tavily_search = tavily_client.search(query=query, max_results=6)
+        tavily_search = tavily_client.search(query=query, max_results=8)
         web_context = _format_tavily_results(tavily_search)
         pinecone_context = _retrieve_pinecone_context(index, query)
 
         research_data = (
-            "## Tavily Evidence\n"
+            "## Tavily Evidence (use these URLs as citations)\n"
             f"{web_context}\n\n"
-            "## Pinecone Chunks\n"
+            "## Pinecone Chunks (cite as [P1], [P2], etc.)\n"
             f"{pinecone_context}"
         )
 
@@ -93,15 +94,25 @@ def build_research_graph(
 
     def writer_node(state: ResearchGraphState) -> ResearchGraphState:
         writer_prompt = (
-            "You are the Writer agent for ScioAI.\n"
-            "Create a polished markdown report with these sections:\n"
+            "You are the Writer agent for ScioAI.\n\n"
+            "Goal: Produce a detailed, citation-grounded research report in Markdown.\n"
+            "Write for a technical audience, but keep it readable.\n\n"
+            "Hard requirements:\n"
+            "- Length: at least 900 words (unless user explicitly asked for concise).\n"
+            "- Use the exact section headings below.\n"
+            "- Every major claim must include an inline citation like [1] or [P1].\n"
+            "- The '## Citations' section must be a numbered list where EACH item is a clickable Markdown link:\n"
+            "  Example: [1] [Article title](https://example.com)\n"
+            "- Do NOT invent sources. Only use URLs present in Tavily Evidence.\n"
+            "- If a citation is missing a URL, omit it.\n\n"
+            "Required sections:\n"
             "# Title\n"
             "## Executive Summary\n"
-            "## Key Findings (bullet list)\n"
+            "## Key Findings\n"
             "## Deep Analysis\n"
             "## Risks and Unknowns\n"
+            "## What to verify next\n"
             "## Citations\n"
-            "Use objective tone and cite evidence using bracket references like [1], [2], [P1]."
         )
 
         draft_msg = llm.invoke(
@@ -127,11 +138,13 @@ def build_research_graph(
     def critic_node(state: ResearchGraphState) -> ResearchGraphState:
         critic_prompt = (
             "You are the Critic agent for ScioAI.\n"
-            "Review the draft against the original query.\n"
-            "Requirements:\n"
+            "Review the draft against the original query and the provided research data.\n\n"
+            "Hard requirements:\n"
             "1) Keep tone objective and analytical.\n"
-            "2) Ensure explicit citations section exists.\n"
-            "3) Remove unsupported claims.\n"
+            "2) Ensure the report is detailed (do not over-compress).\n"
+            "3) Ensure every source in '## Citations' is a Markdown link with a real URL from Tavily.\n"
+            "4) Remove unsupported claims; add more citations where needed.\n"
+            "5) Remove any meta-notes like 'Note: I removed...' from the final answer.\n\n"
             "Return only the improved markdown report."
         )
 
@@ -141,8 +154,8 @@ def build_research_graph(
                 HumanMessage(
                     content=(
                         f"Original Query:\n{state['user_query']}\n\n"
-                        f"Research Data:\n{state['research_data']}\n\n"
-                        f"Draft:\n{state['draft']}"
+                        f"Research Data (authoritative sources):\n{state['research_data']}\n\n"
+                        f"Draft to review:\n{state['draft']}"
                     )
                 ),
             ]

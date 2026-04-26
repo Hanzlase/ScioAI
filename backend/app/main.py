@@ -22,7 +22,7 @@ app = FastAPI(title="ScioAI Backend", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origin_regex=r"http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -177,9 +177,13 @@ def generate_pdf(request: PDFRequest) -> Response:
         raise HTTPException(
             status_code=503,
             detail=(
-                "PDF generation is unavailable because WeasyPrint could not load its "
-                "native dependencies (GTK/Pango/GObject). Install the required system libraries "
-                "and restart the backend."
+                "PDF generation is unavailable on this machine because WeasyPrint could not load its native "
+                "dependencies (GTK/Pango/Cairo/GObject).\n\n"
+                "Windows quick fix:\n"
+                "1) Install MSYS2\n"
+                "2) Install the required libraries (pango, cairo, gdk-pixbuf)\n"
+                "3) Ensure the DLLs are on PATH\n\n"
+                "Docs: https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation"
             ),
         )
 

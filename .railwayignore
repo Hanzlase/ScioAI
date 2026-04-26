@@ -1,0 +1,18 @@
+# Ignore common dev artifacts
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/.mypy_cache/
+
+# Node
+**/node_modules/
+**/.next/
+
+# Env files
+**/.env
+**/.env.*
+
+# OS
+.DS_Store
+Thumbs.db
