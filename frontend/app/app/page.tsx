@@ -6,7 +6,6 @@ import { useChatSessions } from "@/hooks/useChatSessions";
 import { Sparkles, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, usePathname } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -24,13 +23,6 @@ export default function AppPage() {
   } = useChatSessions();
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const router = useRouter();
-  const pathname = usePathname();
-
-  // If the app is accidentally served at / (misconfigured hosting), bounce back to landing.
-  useEffect(() => {
-    if (pathname === "/") router.replace("/");
-  }, [pathname, router]);
 
   // Close mobile sidebar when a session is selected
   useEffect(() => {
