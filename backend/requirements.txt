@@ -9,6 +9,6 @@ langchain-core>=0.3.0
 langgraph>=0.2.60
 langchain-openai>=0.3.0
 
-# PDF Generation
-xhtml2pdf==0.2.17
+# PDF Generation (pure-Python, no native C dependencies)
+reportlab==4.2.5
 markdown==3.7

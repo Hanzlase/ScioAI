@@ -1,28 +1,29 @@
+import io
 import re
 
 import markdown as md
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    HRFlowable,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 from tavily import TavilyClient
-
-# WeasyPrint is optional on Windows (requires external GTK/Pango libs).
-# Import it lazily so the API can boot even when those DLLs are missing.
-try:
-    from weasyprint import HTML  # type: ignore
-except Exception:  # pragma: no cover
-    HTML = None  # type: ignore
-
-try:
-    from xhtml2pdf import pisa
-except ImportError:
-    pisa = None
 
 from .config import get_settings
 from .graph import build_research_graph
 from .models import ChatRequest, ChatResponse, PDFRequest
 
 
-app = FastAPI(title="ScioAI Backend", version="0.2.0")
+app = FastAPI(title="ScioAI Backend", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,19 +53,19 @@ def _safe_filename(raw_name: str) -> str:
 
 
 def _clean_text(text: str) -> str:
-    """Replaces problematic unicode characters that often render as black boxes in PDFs."""
+    """Replace problematic unicode characters that cause rendering issues."""
     if not text:
         return ""
     replacements = {
-        "\u2011": "-",  # Non-breaking hyphen
-        "\u2013": "-",  # En dash
-        "\u2014": "--", # Em dash
-        "\u00A0": " ",  # Non-breaking space
-        "\u2022": "*",  # Bullet
-        "\u2018": "'",  # Left single quote
-        "\u2019": "'",  # Right single quote
-        "\u201C": '"',  # Left double quote
-        "\u201D": '"',  # Right double quote
+        "\u2011": "-",   # Non-breaking hyphen
+        "\u2013": "-",   # En dash
+        "\u2014": "--",  # Em dash
+        "\u00A0": " ",   # Non-breaking space
+        "\u2022": "*",   # Bullet
+        "\u2018": "'",   # Left single quote
+        "\u2019": "'",   # Right single quote
+        "\u201C": '"',   # Left double quote
+        "\u201D": '"',   # Right double quote
         "\u2026": "...", # Ellipsis
     }
     for old, new in replacements.items():
@@ -72,87 +73,197 @@ def _clean_text(text: str) -> str:
     return text
 
 
-def _wrap_html(html_body: str) -> str:
-    return f"""<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset=\"utf-8\" />
-    <style>
-      @page {{ size: A4; margin: 20mm; }}
-      body {{ 
-        font-family: \"Helvetica\", \"Arial\", sans-serif; 
-        color: #000000; 
-        background: #ffffff; 
-        line-height: 1.5; 
-        font-size: 11pt; 
-      }}
-      h1, h2, h3 {{ color: #000000; margin-top: 1.5em; margin-bottom: 0.5em; font-weight: bold; }}
-      h1 {{ font-size: 24pt; border-bottom: 1.5pt solid #000000; padding-bottom: 10px; margin-top: 0; }}
-      h2 {{ font-size: 18pt; border-bottom: 0.5pt solid #dddddd; padding-bottom: 4px; }}
-      h3 {{ font-size: 14pt; }}
-      p {{ margin: 0.8em 0; text-align: justify; }}
-      ul, ol {{ padding-left: 1.5rem; margin: 0.8em 0; }}
-      li {{ margin: 0.4em 0; }}
-      blockquote {{ 
-        margin: 1.5em 0; 
-        padding: 0.5em 1em; 
-        border-left: 3pt solid #000000; 
-        background: #f9f9f9; 
-        font-style: italic;
-      }}
-      table {{ 
-        width: 100%; 
-        border-collapse: collapse; 
-        margin: 1.5em 0; 
-        table-layout: auto;
-      }}
-      th {{ 
-        background: #f2f2f2; 
-        color: #000000; 
-        font-weight: bold; 
-        text-transform: uppercase;
-        font-size: 10pt;
-      }}
-      td, th {{ 
-        border: 0.5pt solid #000000; 
-        padding: 8px; 
-        text-align: left; 
-        vertical-align: top; 
-      }}
-      code {{ 
-        background: #f4f4f4; 
-        padding: 2px 4px; 
-        border-radius: 3px;
-        font-family: monospace;
-      }}
-      pre {{ 
-        background: #000000; 
-        color: #ffffff; 
-        padding: 12px; 
-        border-radius: 4px;
-        white-space: pre-wrap; 
-        word-wrap: break-word;
-        font-family: monospace;
-        font-size: 10pt;
-      }}
-      hr {{ border: none; border-top: 1pt solid #000000; margin: 2em 0; }}
-      a {{ color: #000000; text-decoration: underline; }}
-    </style>
-  </head>
-  <body>
-    {html_body}
-  </body>
-</html>""".strip()
+def _build_pdf_styles() -> dict:
+    """Build a clean monochromatic B&W style set for reportlab."""
+    base = getSampleStyleSheet()
+
+    styles = {
+        "h1": ParagraphStyle(
+            "H1", parent=base["Normal"],
+            fontSize=22, fontName="Helvetica-Bold",
+            textColor=colors.black, spaceAfter=6, spaceBefore=4,
+            borderPadding=(0, 0, 4, 0),
+        ),
+        "h2": ParagraphStyle(
+            "H2", parent=base["Normal"],
+            fontSize=16, fontName="Helvetica-Bold",
+            textColor=colors.black, spaceAfter=4, spaceBefore=14,
+        ),
+        "h3": ParagraphStyle(
+            "H3", parent=base["Normal"],
+            fontSize=13, fontName="Helvetica-Bold",
+            textColor=colors.black, spaceAfter=3, spaceBefore=10,
+        ),
+        "h4": ParagraphStyle(
+            "H4", parent=base["Normal"],
+            fontSize=11, fontName="Helvetica-Bold",
+            textColor=colors.black, spaceAfter=2, spaceBefore=8,
+        ),
+        "body": ParagraphStyle(
+            "Body", parent=base["Normal"],
+            fontSize=10, fontName="Helvetica",
+            textColor=colors.black, spaceAfter=6, leading=15,
+        ),
+        "bullet": ParagraphStyle(
+            "Bullet", parent=base["Normal"],
+            fontSize=10, fontName="Helvetica",
+            textColor=colors.black, spaceAfter=3, leading=14,
+            leftIndent=12, bulletIndent=0,
+        ),
+        "code": ParagraphStyle(
+            "Code", parent=base["Normal"],
+            fontSize=9, fontName="Courier",
+            textColor=colors.black, backColor=colors.HexColor("#f4f4f4"),
+            spaceAfter=6, leading=13, leftIndent=8, rightIndent=8,
+            borderPadding=4,
+        ),
+    }
+    return styles
 
 
-def _markdown_to_html(markdown_text: str) -> str:
-    markdown_text = _clean_text(markdown_text)
-    html_body = md.markdown(
-        markdown_text,
-        extensions=["fenced_code", "tables", "toc", "sane_lists", "nl2br"],
+def _escape_xml(text: str) -> str:
+    """Escape characters that would break reportlab's XML parser."""
+    return (
+        text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
     )
 
-    return _wrap_html(html_body)
+
+def _markdown_to_story(markdown_text: str) -> list:
+    """Convert markdown text to a reportlab story (list of Flowables)."""
+    text = _clean_text(markdown_text)
+    styles = _build_pdf_styles()
+    story = []
+
+    lines = text.split("\n")
+    i = 0
+    in_code_block = False
+    code_buffer = []
+
+    while i < len(lines):
+        line = lines[i]
+
+        # --- Code blocks ---
+        if line.strip().startswith("```"):
+            if not in_code_block:
+                in_code_block = True
+                code_buffer = []
+            else:
+                in_code_block = False
+                code_text = _escape_xml("\n".join(code_buffer))
+                story.append(Paragraph(code_text.replace("\n", "<br/>"), styles["code"]))
+                story.append(Spacer(1, 4))
+                code_buffer = []
+            i += 1
+            continue
+
+        if in_code_block:
+            code_buffer.append(line)
+            i += 1
+            continue
+
+        # --- Headings ---
+        heading_match = re.match(r"^(#{1,4})\s+(.*)", line)
+        if heading_match:
+            level = len(heading_match.group(1))
+            heading_text = _escape_xml(heading_match.group(2).strip())
+            style_key = f"h{min(level, 4)}"
+            story.append(Paragraph(heading_text, styles[style_key]))
+            if level == 1:
+                story.append(HRFlowable(width="100%", thickness=1, color=colors.black, spaceAfter=6))
+            elif level == 2:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#cccccc"), spaceAfter=4))
+            i += 1
+            continue
+
+        # --- Horizontal rules ---
+        if re.match(r"^[-*_]{3,}\s*$", line.strip()):
+            story.append(HRFlowable(width="100%", thickness=0.5, color=colors.black, spaceAfter=8, spaceBefore=8))
+            i += 1
+            continue
+
+        # --- Bullet lists ---
+        bullet_match = re.match(r"^(\s*)[-*+]\s+(.*)", line)
+        if bullet_match:
+            indent_level = len(bullet_match.group(1)) // 2
+            item_text = _escape_xml(bullet_match.group(2).strip())
+            bullet_style = ParagraphStyle(
+                f"Bullet{indent_level}", parent=styles["bullet"],
+                leftIndent=12 + indent_level * 16, bulletText="•",
+            )
+            story.append(Paragraph(item_text, bullet_style))
+            i += 1
+            continue
+
+        # --- Numbered lists ---
+        num_match = re.match(r"^(\s*)\d+\.\s+(.*)", line)
+        if num_match:
+            item_text = _escape_xml(num_match.group(2).strip())
+            story.append(Paragraph(item_text, styles["bullet"]))
+            i += 1
+            continue
+
+        # --- Tables (simple Markdown pipe tables) ---
+        if line.strip().startswith("|") and "|" in line[1:]:
+            table_lines = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                table_lines.append(lines[i])
+                i += 1
+            # Filter out separator rows (|---|---|)
+            rows = []
+            for tl in table_lines:
+                if re.match(r"^\|[\s\-:|]+\|", tl.strip()):
+                    continue
+                cells = [_escape_xml(c.strip()) for c in tl.strip().strip("|").split("|")]
+                rows.append(cells)
+            if rows:
+                max_cols = max(len(r) for r in rows)
+                # Pad shorter rows
+                padded = [r + [""] * (max_cols - len(r)) for r in rows]
+                para_rows = []
+                for ri, row in enumerate(padded):
+                    font = "Helvetica-Bold" if ri == 0 else "Helvetica"
+                    para_rows.append([Paragraph(cell, ParagraphStyle("tc", fontName=font, fontSize=9, leading=12)) for cell in row])
+                col_width = (A4[0] - 40 * mm) / max_cols
+                t = Table(para_rows, colWidths=[col_width] * max_cols)
+                t.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f2f2f2")),
+                    ("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fafafa")]),
+                ]))
+                story.append(Spacer(1, 6))
+                story.append(t)
+                story.append(Spacer(1, 6))
+            continue
+
+        # --- Blank lines ---
+        if not line.strip():
+            story.append(Spacer(1, 6))
+            i += 1
+            continue
+
+        # --- Normal paragraph ---
+        # Apply inline formatting: **bold**, *italic*, `code`
+        para_text = _escape_xml(line.strip())
+        para_text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", para_text)
+        para_text = re.sub(r"\*(.+?)\*", r"<i>\1</i>", para_text)
+        para_text = re.sub(r"`(.+?)`", r'<font name="Courier" size="9">\1</font>', para_text)
+        # Strip markdown links: [text](url) → text
+        para_text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", para_text)
+        story.append(Paragraph(para_text, styles["body"]))
+        i += 1
+
+    return story
 
 
 @app.get("/health")
@@ -189,55 +300,28 @@ def chat(request: ChatRequest) -> ChatResponse:
 @app.post("/api/generate-pdf")
 def generate_pdf(request: PDFRequest) -> Response:
     file_name = _safe_filename(request.filename or "scioai-report")
-    
-    # 1. Try WeasyPrint (Best quality)
-    if HTML is not None:
-        try:
-            if request.html and request.html.strip():
-                html_doc = _wrap_html(_clean_text(request.html))
-            else:
-                html_doc = _markdown_to_html(request.markdown)
 
-            pdf_bytes = HTML(string=html_doc).write_pdf()
-            return Response(
-                content=pdf_bytes,
-                media_type="application/pdf",
-                headers={"Content-Disposition": f'attachment; filename="{file_name}.pdf"'},
-            )
-        except Exception as exc:
-            print(f"WeasyPrint failed: {exc}")
-
-    # 2. Try xhtml2pdf (Pure Python fallback)
-    if pisa is not None:
-        try:
-            import io
-            if request.html and request.html.strip():
-                html_doc = _wrap_html(_clean_text(request.html))
-            else:
-                html_doc = _markdown_to_html(request.markdown)
-            
-            # xhtml2pdf expects a file-like object for output
-            result = io.BytesIO()
-            pisa_status = pisa.CreatePDF(io.BytesIO(html_doc.encode("utf-8")), dest=result)
-            
-            if not pisa_status.err:
-                pdf_data = result.getvalue()
-                print(f"--- xhtml2pdf generated PDF successfully. Size: {len(pdf_data)} bytes ---")
-                return Response(
-                    content=pdf_data,
-                    media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="{file_name}.pdf"'},
-                )
-            else:
-                print(f"--- xhtml2pdf Error: {pisa_status.err} ---")
-        except Exception as exc:
-             print(f"xhtml2pdf fallback failed: {exc}")
-
-    # 3. Last resort error
-    raise HTTPException(
-        status_code=503,
-        detail=(
-            "PDF generation failed. WeasyPrint dependencies are missing, and the fallback generator failed.\n"
-            "Please check backend logs."
-        ),
-    )
+    try:
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=20 * mm,
+            leftMargin=20 * mm,
+            topMargin=20 * mm,
+            bottomMargin=20 * mm,
+            title=file_name,
+        )
+        story = _markdown_to_story(request.markdown)
+        doc.build(story)
+        pdf_bytes = buffer.getvalue()
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{file_name}.pdf"'},
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"PDF generation failed: {exc}",
+        ) from exc
