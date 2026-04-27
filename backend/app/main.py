@@ -13,6 +13,11 @@ try:
 except Exception:  # pragma: no cover
     HTML = None  # type: ignore
 
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
+
 from .config import get_settings
 from .graph import build_research_graph
 from .models import ChatRequest, ChatResponse, PDFRequest
@@ -124,29 +129,49 @@ def chat(request: ChatRequest) -> ChatResponse:
 
 @app.post("/api/generate-pdf")
 def generate_pdf(request: PDFRequest) -> Response:
-    if HTML is None:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "PDF generation is unavailable on this machine because WeasyPrint could not load its native "
-                "dependencies (GTK/Pango/Cairo/GObject).\n\n"
-                "Windows quick fix:\n"
-                "1) Install MSYS2\n"
-                "2) Install the required libraries (pango, cairo, gdk-pixbuf)\n"
-                "3) Ensure the DLLs are on PATH\n\n"
-                "Docs: https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation"
-            ),
-        )
+    file_name = _safe_filename(request.filename or "scioai-report")
+    
+    # 1. Try WeasyPrint (Best quality)
+    if HTML is not None:
+        try:
+            html_doc = _wrap_html(request.html) if (request.html and request.html.strip()) else _markdown_to_html(request.markdown)
+            pdf_bytes = HTML(string=html_doc).write_pdf()
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f'attachment; filename="{file_name}.pdf"'},
+            )
+        except Exception as exc:
+            print(f"WeasyPrint failed: {exc}")
 
-    try:
-        html_doc = _wrap_html(request.html) if (request.html and request.html.strip()) else _markdown_to_html(request.markdown)
-        pdf_bytes = HTML(string=html_doc).write_pdf()
-        file_name = _safe_filename(request.filename or "scioai-report")
+    # 2. Try xhtml2pdf (Pure Python fallback)
+    if pisa is not None:
+        try:
+            import io
+            html_doc = _wrap_html(request.html) if (request.html and request.html.strip()) else _markdown_to_html(request.markdown)
+            
+            # xhtml2pdf expects a file-like object for output
+            result = io.BytesIO()
+            pisa_status = pisa.CreatePDF(io.BytesIO(html_doc.encode("utf-8")), dest=result)
+            
+            if not pisa_status.err:
+                pdf_data = result.getvalue()
+                print(f"--- xhtml2pdf generated PDF successfully. Size: {len(pdf_data)} bytes ---")
+                return Response(
+                    content=pdf_data,
+                    media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{file_name}.pdf"'},
+                )
+            else:
+                print(f"--- xhtml2pdf Error: {pisa_status.err} ---")
+        except Exception as exc:
+             print(f"xhtml2pdf fallback failed: {exc}")
 
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{file_name}.pdf"'},
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}") from exc
+    # 3. Last resort error
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            "PDF generation failed. WeasyPrint dependencies are missing, and the fallback generator failed.\n"
+            "Please check backend logs."
+        ),
+    )

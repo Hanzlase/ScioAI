@@ -1,4 +1,4 @@
-﻿fastapi==0.115.2
+fastapi==0.115.2
 uvicorn[standard]==0.32.0
 python-dotenv==1.0.1
 tavily-python==0.5.0
@@ -6,10 +6,11 @@ pinecone==5.4.2
 pydantic==2.9.2
 
 # LangChain + LangGraph
-langchain-core==0.3.90
-langgraph==0.2.60
-langchain-openai==0.3.6
+langchain-core>=0.3.0
+langgraph>=0.2.60
+langchain-openai>=0.3.0
 
-# Optional: WeasyPrint needs native GTK/Pango libs on Windows.
+# PDF Generation
 weasyprint==63.1
+xhtml2pdf==0.2.17
 markdown==3.7
