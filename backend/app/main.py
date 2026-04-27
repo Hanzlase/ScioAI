@@ -33,17 +33,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-settings = get_settings()
-tavily_client = TavilyClient(api_key=settings.tavily_api_key)
+# Lazy initialization — defers API key validation to first request.
+# This allows the app to boot and pass the /health check even if env vars
+# are not yet injected (e.g., during Railway container startup).
+_research_graph = None
 
-research_graph = build_research_graph(
-    tavily_client=tavily_client,
-    openrouter_api_key=settings.openrouter_api_key,
-    model_researcher=settings.model_researcher,
-    model_writer=settings.model_writer,
-    model_critic=settings.model_critic,
-    model_fallback=settings.model_fallback,
-)
+
+def _get_graph():
+    global _research_graph
+    if _research_graph is None:
+        settings = get_settings()
+        tavily_client = TavilyClient(api_key=settings.tavily_api_key)
+        _research_graph = build_research_graph(
+            tavily_client=tavily_client,
+            openrouter_api_key=settings.openrouter_api_key,
+            model_researcher=settings.model_researcher,
+            model_writer=settings.model_writer,
+            model_critic=settings.model_critic,
+            model_fallback=settings.model_fallback,
+        )
+    return _research_graph
 
 
 def _safe_filename(raw_name: str) -> str:
@@ -283,7 +292,8 @@ def chat(request: ChatRequest) -> ChatResponse:
     }
 
     try:
-        final_state = research_graph.invoke(initial_state)
+        graph = _get_graph()
+        final_state = graph.invoke(initial_state)
         final_report = final_state.get("final_report") or final_state.get("draft")
         if not final_report:
             raise ValueError("LangGraph run completed without a final report.")
