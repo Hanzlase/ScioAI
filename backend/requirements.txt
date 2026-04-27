@@ -10,6 +10,5 @@ langgraph>=0.2.60
 langchain-openai>=0.3.0
 
 # PDF Generation
-weasyprint==63.1
 xhtml2pdf==0.2.17
 markdown==3.7
