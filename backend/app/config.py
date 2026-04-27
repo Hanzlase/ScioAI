@@ -40,7 +40,7 @@ def get_settings() -> Settings:
         pinecone_api_key=_required_env("PINECONE_API_KEY"),
         pinecone_index_name=_required_env("PINECONE_INDEX_NAME"),
         model_researcher=_optional_env("OPENROUTER_MODEL_RESEARCHER", "nvidia/nemotron-3-super-120b-a12b:free"),
-        model_writer=_optional_env("OPENROUTER_MODEL_WRITER", "nousresearch/hermes-3-llama-3.1-405b:free"),
-        model_critic=_optional_env("OPENROUTER_MODEL_CRITIC", "nousresearch/hermes-3-llama-3.1-405b:free"),
-        model_fallback=_optional_env("OPENROUTER_MODEL_FALLBACK", "openai/gpt-oss-120b:free"),
+        model_writer=_optional_env("OPENROUTER_MODEL_WRITER", "nvidia/nemotron-3-super-120b-a12b:free"),
+        model_critic=_optional_env("OPENROUTER_MODEL_CRITIC", "nvidia/nemotron-3-super-120b-a12b:free"),
+        model_fallback=_optional_env("OPENROUTER_MODEL_FALLBACK", "nvidia/nemotron-3-super-120b-a12b:free"),
     )

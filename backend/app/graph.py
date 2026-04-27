@@ -78,12 +78,13 @@ def build_research_graph(
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
+            timeout=300, # Increased to 5 minutes for long reports
         )
 
-    llm_researcher = _llm(model_researcher, temperature=0.2, max_tokens=1200)
-    llm_writer = _llm(model_writer, temperature=0.2, max_tokens=2200)
-    llm_critic = _llm(model_critic, temperature=0.15, max_tokens=2400)
-    llm_fallback = _llm(model_fallback, temperature=0.2, max_tokens=2200)
+    llm_researcher = _llm(model_researcher, temperature=0.2, max_tokens=2500)
+    llm_writer = _llm(model_writer, temperature=0.2, max_tokens=8000)
+    llm_critic = _llm(model_critic, temperature=0.15, max_tokens=8000)
+    llm_fallback = _llm(model_fallback, temperature=0.2, max_tokens=8000)
 
     def _invoke_with_fallback(messages: list[Any], primary: ChatOpenAI) -> str:
         try:
@@ -93,10 +94,15 @@ def build_research_graph(
         return msg.content if isinstance(msg.content, str) else str(msg.content)
 
     def researcher_node(state: ResearchGraphState) -> ResearchGraphState:
+        print(f"--- Entering Researcher Node for query: {state['user_query']} ---")
         query = state["user_query"]
+        print("Tavily search starting...")
         tavily_search = tavily_client.search(query=query, max_results=8)
+        print("Tavily search complete.")
         web_context = _format_tavily_results(tavily_search)
+        print("Pinecone retrieval starting...")
         pinecone_context = _retrieve_pinecone_context(index, query)
+        print("Pinecone retrieval complete.")
 
         research_data = (
             "## Tavily Evidence (use these URLs as citations)\n"
@@ -133,6 +139,7 @@ def build_research_graph(
         }
 
     def writer_node(state: ResearchGraphState) -> ResearchGraphState:
+        print("--- Entering Writer Node ---")
         writer_prompt = (
             "You are the Writer agent for ScioAI.\n\n"
             "Goal: Produce a detailed, citation-grounded research report in Markdown.\n"
@@ -155,6 +162,7 @@ def build_research_graph(
             "## Citations\n"
         )
 
+        print("LLM Writer starting...")
         draft = _invoke_with_fallback(
             [
                 SystemMessage(content=writer_prompt),
@@ -167,6 +175,7 @@ def build_research_graph(
             ],
             llm_writer,
         )
+        print("LLM Writer complete.")
 
         return {
             **state,
@@ -176,6 +185,7 @@ def build_research_graph(
         }
 
     def critic_node(state: ResearchGraphState) -> ResearchGraphState:
+        print("--- Entering Critic Node ---")
         critic_prompt = (
             "You are the Critic agent for ScioAI.\n"
             "Review the draft against the original query and the provided research data.\n\n"
@@ -188,6 +198,7 @@ def build_research_graph(
             "Return only the improved markdown report."
         )
 
+        print("LLM Critic starting...")
         final_report = _invoke_with_fallback(
             [
                 SystemMessage(content=critic_prompt),
@@ -201,6 +212,7 @@ def build_research_graph(
             ],
             llm_critic,
         )
+        print("LLM Critic complete.")
 
         return {
             **state,
