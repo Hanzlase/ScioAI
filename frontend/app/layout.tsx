@@ -4,8 +4,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ScioAI – Autonomous Research Platform",
   description:
-    "ScioAI orchestrates specialized AI agents across web intelligence, vector memory, and critical review to produce citation-grounded research reports.",
-  keywords: ["AI research", "LangGraph", "multi-agent", "Groq", "Pinecone", "Tavily"],
+    "ScioAI orchestrates specialized AI agents across web intelligence and critical review to produce citation-grounded research reports.",
+  keywords: ["AI research", "LangGraph", "multi-agent", "Groq", "Tavily"],
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

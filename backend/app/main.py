@@ -3,7 +3,6 @@ import re
 import markdown as md
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pinecone import Pinecone
 from tavily import TavilyClient
 
 # WeasyPrint is optional on Windows (requires external GTK/Pango libs).
@@ -35,12 +34,9 @@ app.add_middleware(
 
 settings = get_settings()
 tavily_client = TavilyClient(api_key=settings.tavily_api_key)
-pinecone_client = Pinecone(api_key=settings.pinecone_api_key)
 
 research_graph = build_research_graph(
     tavily_client=tavily_client,
-    pinecone_client=pinecone_client,
-    pinecone_index_name=settings.pinecone_index_name,
     openrouter_api_key=settings.openrouter_api_key,
     model_researcher=settings.model_researcher,
     model_writer=settings.model_writer,
@@ -55,30 +51,92 @@ def _safe_filename(raw_name: str) -> str:
     return cleaned[:70] or "scioai-report"
 
 
+def _clean_text(text: str) -> str:
+    """Replaces problematic unicode characters that often render as black boxes in PDFs."""
+    if not text:
+        return ""
+    replacements = {
+        "\u2011": "-",  # Non-breaking hyphen
+        "\u2013": "-",  # En dash
+        "\u2014": "--", # Em dash
+        "\u00A0": " ",  # Non-breaking space
+        "\u2022": "*",  # Bullet
+        "\u2018": "'",  # Left single quote
+        "\u2019": "'",  # Right single quote
+        "\u201C": '"',  # Left double quote
+        "\u201D": '"',  # Right double quote
+        "\u2026": "...", # Ellipsis
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    return text
+
+
 def _wrap_html(html_body: str) -> str:
     return f"""<!DOCTYPE html>
 <html>
   <head>
     <meta charset=\"utf-8\" />
     <style>
-      @page {{ size: A4; margin: 28mm 20mm 24mm 20mm; }}
-      body {{ font-family: \"Segoe UI\", \"Inter\", sans-serif; color: #1f2937; background: #fffdf7; line-height: 1.6; font-size: 12pt; }}
-      h1, h2, h3 {{ color: #0f766e; margin-top: 1.2em; margin-bottom: 0.45em; }}
-      h1 {{ font-size: 26px; border-bottom: 2px solid #67e8f9; padding-bottom: 8px; }}
-      h2 {{ font-size: 20px; }}
-      h3 {{ font-size: 16px; }}
-      p {{ margin: 0.55em 0; }}
-      ul, ol {{ padding-left: 1.2rem; margin: 0.6em 0; }}
-      li {{ margin: 0.25em 0; }}
-      blockquote {{ margin: 0.8em 0; padding: 0.65em 0.9em; border-left: 4px solid #f97316; background: #fff7ed; }}
-      table {{ width: 100%; border-collapse: collapse; margin: 1em 0; table-layout: fixed; word-wrap: break-word; }}
-      th {{ background: #cffafe; color: #164e63; }}
-      td, th {{ border: 1px solid #bae6fd; padding: 8px; text-align: left; vertical-align: top; }}
-      code {{ background: #fef3c7; padding: 1px 4px; border-radius: 4px; }}
-      pre {{ background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 8px; overflow: hidden; white-space: pre-wrap; word-break: break-word; }}
-      hr {{ border: none; border-top: 1px solid #e2e8f0; margin: 1.2em 0; }}
-      a {{ color: #0ea5e9; text-decoration: none; }}
-      a:hover {{ text-decoration: underline; }}
+      @page {{ size: A4; margin: 20mm; }}
+      body {{ 
+        font-family: \"Helvetica\", \"Arial\", sans-serif; 
+        color: #000000; 
+        background: #ffffff; 
+        line-height: 1.5; 
+        font-size: 11pt; 
+      }}
+      h1, h2, h3 {{ color: #000000; margin-top: 1.5em; margin-bottom: 0.5em; font-weight: bold; }}
+      h1 {{ font-size: 24pt; border-bottom: 1.5pt solid #000000; padding-bottom: 10px; margin-top: 0; }}
+      h2 {{ font-size: 18pt; border-bottom: 0.5pt solid #dddddd; padding-bottom: 4px; }}
+      h3 {{ font-size: 14pt; }}
+      p {{ margin: 0.8em 0; text-align: justify; }}
+      ul, ol {{ padding-left: 1.5rem; margin: 0.8em 0; }}
+      li {{ margin: 0.4em 0; }}
+      blockquote {{ 
+        margin: 1.5em 0; 
+        padding: 0.5em 1em; 
+        border-left: 3pt solid #000000; 
+        background: #f9f9f9; 
+        font-style: italic;
+      }}
+      table {{ 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin: 1.5em 0; 
+        table-layout: auto;
+      }}
+      th {{ 
+        background: #f2f2f2; 
+        color: #000000; 
+        font-weight: bold; 
+        text-transform: uppercase;
+        font-size: 10pt;
+      }}
+      td, th {{ 
+        border: 0.5pt solid #000000; 
+        padding: 8px; 
+        text-align: left; 
+        vertical-align: top; 
+      }}
+      code {{ 
+        background: #f4f4f4; 
+        padding: 2px 4px; 
+        border-radius: 3px;
+        font-family: monospace;
+      }}
+      pre {{ 
+        background: #000000; 
+        color: #ffffff; 
+        padding: 12px; 
+        border-radius: 4px;
+        white-space: pre-wrap; 
+        word-wrap: break-word;
+        font-family: monospace;
+        font-size: 10pt;
+      }}
+      hr {{ border: none; border-top: 1pt solid #000000; margin: 2em 0; }}
+      a {{ color: #000000; text-decoration: underline; }}
     </style>
   </head>
   <body>
@@ -88,6 +146,7 @@ def _wrap_html(html_body: str) -> str:
 
 
 def _markdown_to_html(markdown_text: str) -> str:
+    markdown_text = _clean_text(markdown_text)
     html_body = md.markdown(
         markdown_text,
         extensions=["fenced_code", "tables", "toc", "sane_lists", "nl2br"],
@@ -134,7 +193,11 @@ def generate_pdf(request: PDFRequest) -> Response:
     # 1. Try WeasyPrint (Best quality)
     if HTML is not None:
         try:
-            html_doc = _wrap_html(request.html) if (request.html and request.html.strip()) else _markdown_to_html(request.markdown)
+            if request.html and request.html.strip():
+                html_doc = _wrap_html(_clean_text(request.html))
+            else:
+                html_doc = _markdown_to_html(request.markdown)
+
             pdf_bytes = HTML(string=html_doc).write_pdf()
             return Response(
                 content=pdf_bytes,
@@ -148,7 +211,10 @@ def generate_pdf(request: PDFRequest) -> Response:
     if pisa is not None:
         try:
             import io
-            html_doc = _wrap_html(request.html) if (request.html and request.html.strip()) else _markdown_to_html(request.markdown)
+            if request.html and request.html.strip():
+                html_doc = _wrap_html(_clean_text(request.html))
+            else:
+                html_doc = _markdown_to_html(request.markdown)
             
             # xhtml2pdf expects a file-like object for output
             result = io.BytesIO()

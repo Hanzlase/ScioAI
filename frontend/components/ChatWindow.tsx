@@ -31,7 +31,7 @@ interface ChatWindowProps {
 
 const loadingStages = [
   { label: "Agents analyzing your request…",    icon: Zap },
-  { label: "Searching web and vector store…",   icon: ScanSearch },
+  { label: "Searching the web for intelligence…", icon: ScanSearch },
   { label: "Drafting and reviewing report…",    icon: Sparkles },
 ] as const;
 
@@ -219,7 +219,7 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
             {session?.title ?? "ScioAI Research Agent"}
           </h1>
           <p className="text-xs sm:text-sm" style={{ color: "var(--c-500)" }}>
-            Researcher · Writer · Critic · Llama 3.3 70B
+            Researcher · Writer · Critic · High-Performance LLMs
           </p>
         </div>
         <span className="hidden sm:flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--c-200)", color: "var(--c-600)" }}>
@@ -247,7 +247,7 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
                 Start a research session
               </h2>
               <p className="mt-2 max-w-md text-base" style={{ color: "var(--c-500)" }}>
-                Ask anything. Agents will research the web, retrieve context, and deliver
+                Ask anything. Agents will research the web and deliver
                 a citation-grounded report.
               </p>
             </motion.div>

@@ -32,45 +32,19 @@ def _format_tavily_results(search_payload: dict[str, Any]) -> str:
     return "\n\n".join(lines)
 
 
-def _retrieve_pinecone_context(index: Any, query: str) -> str:
-    stats = index.describe_index_stats()
-    dimension = stats.get("dimension")
-    if not isinstance(dimension, int) or dimension <= 0:
-        return "Pinecone index connected, but the vector dimension is unavailable."
 
-    query_result = index.query(
-        vector=[0.0] * dimension,
-        top_k=4,
-        include_metadata=True,
-    )
-    matches = query_result.get("matches", [])
-    if not matches:
-        return f"Pinecone query returned no chunks for semantic seed: {query}"
-
-    chunks: list[str] = []
-    for idx, match in enumerate(matches, start=1):
-        metadata = match.get("metadata", {}) or {}
-        text = metadata.get("text") or metadata.get("chunk") or str(metadata)
-        source = metadata.get("source") or metadata.get("url") or "pinecone://chunk"
-        score = float(match.get("score", 0.0))
-        chunks.append(f"[P{idx}] score={score:.4f} | source={source}\n{text}")
-
-    return "\n\n".join(chunks)
 
 
 def build_research_graph(
     tavily_client: TavilyClient,
-    pinecone_client: Pinecone,
-    pinecone_index_name: str,
     openrouter_api_key: str,
     model_researcher: str,
     model_writer: str,
     model_critic: str,
     model_fallback: str,
 ):
-    index = pinecone_client.Index(pinecone_index_name)
-
     def _llm(model: str, *, temperature: float, max_tokens: int) -> ChatOpenAI:
+
         # OpenRouter is OpenAI-compatible.
         return ChatOpenAI(
             api_key=openrouter_api_key,
@@ -100,15 +74,10 @@ def build_research_graph(
         tavily_search = tavily_client.search(query=query, max_results=8)
         print("Tavily search complete.")
         web_context = _format_tavily_results(tavily_search)
-        print("Pinecone retrieval starting...")
-        pinecone_context = _retrieve_pinecone_context(index, query)
-        print("Pinecone retrieval complete.")
 
         research_data = (
             "## Tavily Evidence (use these URLs as citations)\n"
-            f"{web_context}\n\n"
-            "## Pinecone Chunks (cite as [P1], [P2], etc.)\n"
-            f"{pinecone_context}"
+            f"{web_context}"
         )
 
         # Optional: let researcher model extract a tight plan/questions.
@@ -147,7 +116,7 @@ def build_research_graph(
             "Hard requirements:\n"
             "- Length: at least 900 words (unless user explicitly asked for concise).\n"
             "- Use the exact section headings below.\n"
-            "- Every major claim must include an inline citation like [1] or [P1].\n"
+            "- Every major claim must include an inline citation like [1].\n"
             "- The '## Citations' section must be a numbered list where EACH item is a clickable Markdown link:\n"
             "  Example: [1] [Article title](https://example.com)\n"
             "- Do NOT invent sources. Only use URLs present in Tavily Evidence.\n"

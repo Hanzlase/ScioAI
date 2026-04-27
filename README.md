@@ -35,8 +35,7 @@
 ScioAI is a full-stack **multi-agent research platform** that takes a natural language query and returns a polished, structured Markdown report with citations. It combines:
 
 - **Live web search** (Tavily) for real-time intelligence
-- **Vector memory** (Pinecone) for domain-specific context retrieval
-- **LLM synthesis** (Groq · Llama 3.3 70B) for report writing and critical review
+- **LLM synthesis** (OpenRouter / Groq) for report writing and critical review
 - **LangGraph** for orchestrating the agent workflow as a stateful directed acyclic graph
 
 ---
@@ -64,26 +63,26 @@ ScioAI is a full-stack **multi-agent research platform** that takes a natural la
 │  │  Researcher  │──▶│   Writer    │──▶│     Critic      │   │
 │  │             │   │             │   │                 │   │
 │  │ Tavily Web  │   │ Llama 3.3   │   │  Llama 3.3 70B  │   │
-│  │ Pinecone    │   │   70B LLM   │   │  Citation Check │   │
+│  │ Intelligence│   │   70B LLM   │   │  Citation Check │   │
 │  └─────────────┘   └─────────────┘   └─────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
            │                                      │
-    ┌──────┴──────┐                        ┌──────┴──────┐
-    │  Tavily API  │                        │  Pinecone   │
-    │ (Web Search) │                        │  (Vectors)  │
-    └─────────────┘                        └─────────────┘
-                              │
-                       ┌──────┴──────┐
-                       │  Groq API   │
-                       │(Llama 3.3)  │
-                       └─────────────┘
+     ┌──────┴──────┐                        ┌──────┴──────┐
+     │  Tavily API  │                        │   FastAPI   │
+     │ (Web Search) │                        │   Server    │
+     └─────────────┘                        └─────────────┘
+                               │
+                        ┌──────┴──────┐
+                        │  Groq API   │
+                        │(Llama 3.3)  │
+                        └─────────────┘
 ```
 
 ### Data Flow
 
 1. **User sends a query** → Next.js frontend → `POST /api/chat`
 2. **FastAPI** receives the request and invokes the LangGraph compiled graph
-3. **Researcher node** queries Tavily (6 web results) + Pinecone (4 top chunks) → formats evidence
+3. **Researcher node** queries Tavily (8 web results) → formats evidence
 4. **Writer node** calls Groq LLM with a structured report prompt + all evidence → produces draft
 5. **Critic node** calls Groq LLM again with draft + evidence → verifies citations, improves objectivity
 6. **Final report** (Markdown) is returned to the frontend
@@ -102,9 +101,8 @@ ScioAI is a full-stack **multi-agent research platform** that takes a natural la
 | **Icons** | Lucide React | Consistent icon set |
 | **Backend** | FastAPI + Uvicorn | High-performance Python API server |
 | **Agent Orchestration** | LangGraph 0.2 | Stateful multi-agent DAG |
-| **LLM** | Groq · Llama 3.3 70B | Ultra-fast LLM inference |
+| **LLM** | OpenRouter / Groq | High-performance LLM inference |
 | **Web Search** | Tavily | Real-time web intelligence |
-| **Vector Store** | Pinecone | Semantic document retrieval |
 | **PDF Export** | WeasyPrint (optional) | Markdown → PDF rendering |
 
 ---
@@ -156,13 +154,7 @@ GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
 
 # Tavily Search API – https://tavily.com/
 TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxxxxxx
-
-# Pinecone – https://app.pinecone.io/
-PINECONE_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-PINECONE_INDEX_NAME=your-index-name
 ```
-
-> **Pinecone Index:** The index must already exist and be populated with your documents. The Researcher agent queries it using a zero-vector (returns top-4 matches by score). Ensure the index dimension matches your embedding model.
 
 ### Frontend `.env.local` (optional)
 
@@ -219,14 +211,6 @@ npm run dev
 
 The app will be available at: `http://localhost:3000`
 
-### Running Both Concurrently (PowerShell)
-
-```powershell
-# From the project root
-Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd backend; uvicorn app.main:app --reload --port 8000'
-Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd frontend; npm run dev'
-```
-
 ---
 
 ## API Reference
@@ -279,8 +263,6 @@ Convert a Markdown report to a styled PDF download.
 
 **Response:** Binary PDF file with `Content-Disposition: attachment` header.
 
-> **Note:** Returns `503` on Windows if WeasyPrint native dependencies are not installed.
-
 ---
 
 ## How the Pipeline Works
@@ -292,7 +274,7 @@ The pipeline uses a `TypedDict` state object passed through all nodes:
 ```python
 class ResearchGraphState(TypedDict):
     user_query: str        # Original user question
-    research_data: str     # Formatted Tavily + Pinecone evidence
+    research_data: str     # Formatted Tavily evidence
     draft: str             # Writer's initial report
     final_report: str      # Critic's refined final report
     current_step: str      # Current pipeline stage
@@ -303,9 +285,9 @@ class ResearchGraphState(TypedDict):
 
 | Node | Role | Model |
 |------|------|-------|
-| **researcher** | Tavily web search (6 results) + Pinecone vector query (top-4 chunks) | — |
-| **writer** | Synthesizes evidence into structured Markdown report | Llama 3.3 70B |
-| **critic** | Reviews draft, verifies citations, removes unsupported claims | Llama 3.3 70B |
+| **researcher** | Tavily web search (8 results) | — |
+| **writer** | Synthesizes evidence into structured Markdown report | Nvidia Nemotron (Default) |
+| **critic** | Reviews draft, verifies citations, removes unsupported claims | Nvidia Nemotron (Default) |
 
 ### Graph Topology
 
@@ -326,13 +308,6 @@ The frontend uses a premium light theme with:
 - **Shadows:** Layered glass-effect shadows with colored undertones
 - **Animations:** Framer Motion for page transitions; CSS for micro-interactions
 
-### Key Components
-
-- **Landing Page** (`/`) — Hero, agent cards, workflow steps, tech stack, CTA
-- **Chat Workspace** (`/app`) — Sidebar sessions + full-height chat window
-- **ChatWindow** — Message bubbles, loading pipeline stages, PDF export
-- **Sidebar** — Session list with context menus (rename/delete)
-
 ---
 
 ## License
@@ -342,5 +317,5 @@ MIT License – see `LICENSE` for details.
 ---
 
 <div align="center">
-Built with ♥ using LangGraph · Groq · Pinecone · Next.js · FastAPI
+Built with ♥ using LangGraph · Groq · Next.js · FastAPI
 </div>

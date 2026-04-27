@@ -34,10 +34,9 @@ const fadeItem = {
 };
 
 const agents = [
-  { title: "The Researcher", desc: "Scours live web intelligence via Tavily and retrieves contextual chunks from your Pinecone vector store.", icon: Telescope, tag: "Web · Vector" },
-  { title: "The Writer",     desc: "Synthesizes all evidence into a structured Markdown report — executive summary, findings, analysis, citations.", icon: FilePenLine, tag: "LLM Synthesis" },
-  { title: "The Critic",     desc: "Reviews every draft: verifies citations, removes unsupported claims, enforces objective tone before delivery.", icon: ShieldCheck, tag: "QA · Review" },
-  { title: "Shared Memory",  desc: "Pinecone vector retrieval enriches every query with semantically relevant document chunks beyond live search.", icon: Database, tag: "Vector DB" },
+  { title: "The Researcher", desc: "Scours live web intelligence via Tavily to gather the most relevant evidence for your query.", icon: Telescope, tag: "Web Search" },
+  { title: "The Writer",     desc: "Synthesizes all evidence into a structured Markdown report — executive summary, findings, analysis, and citations.", icon: FilePenLine, tag: "LLM Synthesis" },
+  { title: "The Critic",     desc: "Reviews every draft: verifies citations, removes unsupported claims, and enforces an objective tone.", icon: ShieldCheck, tag: "QA · Review" },
 ];
 
 const stats = [
@@ -49,9 +48,9 @@ const stats = [
 
 const steps = [
   { n: "01", title: "You ask a question",        desc: "Enter any research topic. Sessions are persisted locally.", icon: Search },
-  { n: "02", title: "Researcher gathers evidence", desc: "Tavily searches the web and Pinecone retrieves semantic document chunks.", icon: Telescope },
-  { n: "03", title: "Writer drafts the report",  desc: "Llama 3.3 70B synthesizes evidence into a structured Markdown report with citations.", icon: FilePenLine },
-  { n: "04", title: "Critic reviews & refines",  desc: "A second LLM pass verifies citations and ensures objective, accurate output.", icon: ShieldCheck },
+  { n: "02", title: "Researcher gathers evidence", desc: "Tavily searches the web for real-time intelligence and citations.", icon: Telescope },
+  { n: "03", title: "Writer drafts the report",  desc: "High-performance LLMs synthesize evidence into a structured Markdown report.", icon: FilePenLine },
+  { n: "04", title: "Critic reviews & refines",  desc: "A second AI pass verifies citations and ensures objective, accurate output.", icon: ShieldCheck },
 ];
 
 const navLinks = [
@@ -223,23 +222,23 @@ export default function LandingPage() {
       {/* ── Agents ── */}
       <section id="features" className="border-b px-5 py-20" style={{ borderColor: "var(--c-100)" }}>
         <div className="mx-auto max-w-6xl">
-          <motion.div {...inView(0)} className="mb-12">
+          <motion.div {...inView(0)} className="mb-12 text-center">
             <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--c-400)" }}>The multi-agent pipeline</p>
             <h2 className="mt-2 font-heading text-3xl font-extrabold sm:text-4xl" style={{ color: "var(--c-900)" }}>
               Three agents. One workflow.
             </h2>
-            <p className="mt-3 max-w-lg text-base leading-relaxed sm:text-lg" style={{ color: "var(--c-500)" }}>
+            <p className="mx-auto mt-3 max-w-lg text-base leading-relaxed sm:text-lg" style={{ color: "var(--c-500)" }}>
               Each agent has a distinct, specialized role, handing off work in sequence.
             </p>
           </motion.div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {agents.map(({ title, desc, icon: Icon, tag }, i) => (
               <motion.article
                 key={title}
                 {...inView(i * 0.08)}
                 whileHover={{ y: -6, transition: { duration: 0.18 } }}
-                className="card hover-lift hover-glow flex flex-col gap-4 p-6"
+                className="card hover-lift hover-glow flex flex-col items-center text-center gap-4 p-6"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl border" style={{ borderColor: "var(--c-200)", background: "var(--c-50)", color: "var(--c-700)" }}>
                   <Icon size={22} />
@@ -258,7 +257,7 @@ export default function LandingPage() {
       {/* ── How it works ── */}
       <section id="how-it-works" className="border-b px-5 py-20" style={{ borderColor: "var(--c-100)", background: "var(--c-50)" }}>
         <div className="mx-auto max-w-6xl">
-          <motion.div {...inView(0)} className="mb-12">
+          <motion.div {...inView(0)} className="mb-12 text-center">
             <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--c-400)" }}>Workflow</p>
             <h2 className="mt-2 font-heading text-3xl font-extrabold sm:text-4xl" style={{ color: "var(--c-900)" }}>
               From query to report in seconds.
@@ -301,7 +300,7 @@ export default function LandingPage() {
       {/* ── Tech stack ── */}
       <section id="stack" className="border-b px-5 py-20" style={{ borderColor: "var(--c-100)" }}>
         <div className="mx-auto max-w-6xl">
-          <motion.div {...inView(0)} className="mb-10">
+          <motion.div {...inView(0)} className="mb-10 text-center">
             <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--c-400)" }}>Powered by</p>
             <h2 className="mt-2 font-heading text-3xl font-extrabold sm:text-4xl" style={{ color: "var(--c-900)" }}>Best-in-class AI infrastructure.</h2>
           </motion.div>
@@ -311,14 +310,13 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: "-40px" }}
-            className="flex flex-wrap gap-3"
+            className="flex flex-wrap justify-center gap-3"
           >
             {[
               "Next.js 14",
               "FastAPI",
               "LangGraph",
-              "Groq · Llama 3.3 70B",
-              "Pinecone",
+              "OpenRouter / Groq",
               "Tavily Search",
               "Tailwind CSS",
               "Framer Motion",
@@ -367,7 +365,7 @@ export default function LandingPage() {
             <Sparkles size={14} style={{ color: "var(--c-500)" }} />
             ScioAI
           </div>
-          <p className="text-sm" style={{ color: "var(--c-400)" }}>LangGraph · Groq · Pinecone · Next.js · FastAPI</p>
+          <p className="text-sm" style={{ color: "var(--c-400)" }}>LangGraph · Groq · Next.js · FastAPI</p>
         </div>
       </footer>
     </main>

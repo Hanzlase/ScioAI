@@ -11,8 +11,6 @@ load_dotenv()
 class Settings:
     openrouter_api_key: str
     tavily_api_key: str
-    pinecone_api_key: str
-    pinecone_index_name: str
 
     # Model routing (OpenRouter model IDs)
     model_researcher: str
@@ -37,8 +35,6 @@ def get_settings() -> Settings:
     return Settings(
         openrouter_api_key=_required_env("OPENROUTER_API_KEY"),
         tavily_api_key=_required_env("TAVILY_API_KEY"),
-        pinecone_api_key=_required_env("PINECONE_API_KEY"),
-        pinecone_index_name=_required_env("PINECONE_INDEX_NAME"),
         model_researcher=_optional_env("OPENROUTER_MODEL_RESEARCHER", "nvidia/nemotron-3-super-120b-a12b:free"),
         model_writer=_optional_env("OPENROUTER_MODEL_WRITER", "nvidia/nemotron-3-super-120b-a12b:free"),
         model_critic=_optional_env("OPENROUTER_MODEL_CRITIC", "nvidia/nemotron-3-super-120b-a12b:free"),
