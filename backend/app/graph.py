@@ -81,8 +81,8 @@ def build_research_graph(
             timeout=300, # Increased to 5 minutes for long reports
         )
 
-    llm_researcher = _llm(model_researcher, temperature=0.2, max_tokens=2500)
-    llm_writer = _llm(model_writer, temperature=0.2, max_tokens=8000)
+    llm_researcher = _llm(model_researcher, temperature=0.25, max_tokens=2500)
+    llm_writer = _llm(model_writer, temperature=0.6, max_tokens=8000)
     llm_critic = _llm(model_critic, temperature=0.15, max_tokens=8000)
     llm_fallback = _llm(model_fallback, temperature=0.2, max_tokens=8000)
 
