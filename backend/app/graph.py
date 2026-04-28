@@ -23,10 +23,12 @@ def _format_tavily_results(search_payload: dict[str, Any]) -> str:
         return "No Tavily web results were returned."
 
     lines: list[str] = []
-    for idx, item in enumerate(entries[:6], start=1):
+    # Reduced to top 5 results to save tokens
+    for idx, item in enumerate(entries[:5], start=1):
         title = item.get("title", "Untitled")
         url = item.get("url", "")
-        content = (item.get("content", "") or "").strip()
+        # Truncate content to ~1000 chars per result
+        content = (item.get("content", "") or "").strip()[:1000]
         lines.append(f"[{idx}] {title}\nSource: {url}\nEvidence: {content}")
     return "\n\n".join(lines)
 
@@ -54,10 +56,11 @@ def build_research_graph(
             timeout=300, # Increased to 5 minutes for long reports
         )
 
-    llm_researcher = _llm(model_researcher, temperature=0.25, max_tokens=2500)
-    llm_writer = _llm(model_writer, temperature=0.6, max_tokens=8000)
-    llm_critic = _llm(model_critic, temperature=0.15, max_tokens=8000)
-    llm_fallback = _llm(model_fallback, temperature=0.2, max_tokens=8000)
+    # Reduced max_tokens to stay under 8k total (Prompt + Completion)
+    llm_researcher = _llm(model_researcher, temperature=0.25, max_tokens=1500)
+    llm_writer = _llm(model_writer, temperature=0.6, max_tokens=4000)
+    llm_critic = _llm(model_critic, temperature=0.15, max_tokens=4000)
+    llm_fallback = _llm(model_fallback, temperature=0.2, max_tokens=4000)
 
     def _invoke_with_fallback(messages: list[Any], primary: ChatOpenAI) -> str:
         try:
@@ -70,38 +73,41 @@ def build_research_graph(
         print(f"--- Entering Researcher Node for query: {state['user_query']} ---")
         query = state["user_query"]
         print("Tavily search starting...")
-        tavily_search = tavily_client.search(query=query, max_results=8)
+        # Get 5 results
+        tavily_search = tavily_client.search(query=query, max_results=5)
         print("Tavily search complete.")
         web_context = _format_tavily_results(tavily_search)
 
-        research_data = (
-            "## Tavily Evidence (use these URLs as citations)\n"
-            f"{web_context}"
-        )
-
-        # Optional: let researcher model extract a tight plan/questions.
+        # We summarize the evidence immediately to save tokens for the writer.
         researcher_prompt = (
-            "You are the Researcher agent for ScioAI.\n"
-            "Given the question and evidence, extract: (1) key sub-questions, (2) a brief outline, "
-            "(3) any contradictions across sources. Keep it concise.\n"
-            "Return markdown." 
+            "You are the Research Analyst for ScioAI.\n"
+            "Your goal is to extract ALL critical facts, data points, and citations from the evidence below.\n"
+            "Format your output as a 'Condensed Research Brief' with bullet points.\n"
+            "Maintain all URLs and citations. Be extremely dense and factual. No fluff."
         )
-        addendum = _invoke_with_fallback(
+        
+        condensed_brief = _invoke_with_fallback(
             [
                 SystemMessage(content=researcher_prompt),
                 HumanMessage(
                     content=(
-                        f"User Query:\n{state['user_query']}\n\n"
-                        f"Evidence:\n{research_data}"
+                        f"User Query: {state['user_query']}\n\n"
+                        f"Evidence:\n{web_context}"
                     )
                 ),
             ],
             llm_researcher,
         )
 
+        # Final safety check: hard truncate the research data to ~12k chars 
+        # to ensure we never exceed the 8k token limit (Prompt + Completion).
+        final_data = f"## Research Brief\n{condensed_brief}"
+        if len(final_data) > 12000:
+            final_data = final_data[:12000] + "\n... [truncated for token limits] ..."
+
         return {
             **state,
-            "research_data": f"{research_data}\n\n## Researcher Notes\n{addendum}",
+            "research_data": final_data,
             "current_step": "research_complete",
             "workflow_steps": [*state.get("workflow_steps", []), "researcher"],
         }
