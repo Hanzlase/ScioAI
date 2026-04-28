@@ -5,7 +5,6 @@ from typing import Any, TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
-from pinecone import Pinecone
 from tavily import TavilyClient
 
 
