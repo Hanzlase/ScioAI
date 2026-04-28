@@ -9,10 +9,10 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class Settings:
-    openrouter_api_key: str
+    groq_api_key: str
     tavily_api_key: str
 
-    # Model routing (OpenRouter model IDs)
+    # Model routing (Groq model IDs)
     model_researcher: str
     model_writer: str
     model_critic: str
@@ -33,10 +33,10 @@ def _optional_env(name: str, default: str) -> str:
 
 def get_settings() -> Settings:
     return Settings(
-        openrouter_api_key=_required_env("OPENROUTER_API_KEY"),
+        groq_api_key=_required_env("GROQ_API_KEY"),
         tavily_api_key=_required_env("TAVILY_API_KEY"),
-        model_researcher=_optional_env("OPENROUTER_MODEL_RESEARCHER", "nvidia/nemotron-3-super-120b-a12b:free"),
-        model_writer=_optional_env("OPENROUTER_MODEL_WRITER", "nvidia/nemotron-3-super-120b-a12b:free"),
-        model_critic=_optional_env("OPENROUTER_MODEL_CRITIC", "nvidia/nemotron-3-super-120b-a12b:free"),
-        model_fallback=_optional_env("OPENROUTER_MODEL_FALLBACK", "nvidia/nemotron-3-super-120b-a12b:free"),
+        model_researcher=_optional_env("GROQ_MODEL_RESEARCHER", "openai/gpt-oss-120b"),
+        model_writer=_optional_env("GROQ_MODEL_WRITER", "openai/gpt-oss-120b"),
+        model_critic=_optional_env("GROQ_MODEL_CRITIC", "openai/gpt-oss-120b"),
+        model_fallback=_optional_env("GROQ_MODEL_FALLBACK", "openai/gpt-oss-120b"),
     )

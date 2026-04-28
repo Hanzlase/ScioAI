@@ -51,7 +51,7 @@ def _get_graph():
         tavily_client = TavilyClient(api_key=settings.tavily_api_key)
         _research_graph = build_research_graph(
             tavily_client=tavily_client,
-            openrouter_api_key=settings.openrouter_api_key,
+            groq_api_key=settings.groq_api_key,
             model_researcher=settings.model_researcher,
             model_writer=settings.model_writer,
             model_critic=settings.model_critic,

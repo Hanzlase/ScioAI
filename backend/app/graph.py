@@ -36,7 +36,7 @@ def _format_tavily_results(search_payload: dict[str, Any]) -> str:
 
 def build_research_graph(
     tavily_client: TavilyClient,
-    openrouter_api_key: str,
+    groq_api_key: str,
     model_researcher: str,
     model_writer: str,
     model_critic: str,
@@ -44,10 +44,10 @@ def build_research_graph(
 ):
     def _llm(model: str, *, temperature: float, max_tokens: int) -> ChatOpenAI:
 
-        # OpenRouter is OpenAI-compatible.
+        # Groq is OpenAI-compatible via their API endpoint.
         return ChatOpenAI(
-            api_key=openrouter_api_key,
-            base_url="https://openrouter.ai/api/v1",
+            api_key=groq_api_key,
+            base_url="https://api.groq.com/openai/v1",
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
