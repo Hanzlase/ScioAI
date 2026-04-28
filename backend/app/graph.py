@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 from typing import Any, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -18,19 +19,28 @@ class ResearchGraphState(TypedDict):
     workflow_steps: list[str]
 
 
+def _today() -> str:
+    """Return today's date as a string for grounding agent context."""
+    return datetime.now(timezone.utc).strftime("%B %d, %Y")
+
+
 def _format_tavily_results(search_payload: dict[str, Any]) -> str:
+    """Format Tavily results into a clearly numbered evidence block."""
     entries = search_payload.get("results", [])
     if not entries:
-        return "No Tavily web results were returned."
-
+        return "No results returned."
     lines: list[str] = []
     for idx, item in enumerate(entries[:5], start=1):
-        title = item.get("title", "Untitled")
-        url = item.get("url", "")
-        # Truncate each result to ~800 chars to save tokens
-        content = (item.get("content", "") or "").strip()[:800]
-        lines.append(f"[{idx}] {title}\nURL: {url}\n{content}")
-    return "\n\n---\n\n".join(lines)
+        title   = item.get("title", "Untitled")
+        url     = item.get("url", "")
+        content = (item.get("content", "") or "").strip()[:900]
+        lines.append(
+            f"[Source {idx}]\n"
+            f"Title: {title}\n"
+            f"URL: {url}\n"
+            f"Excerpt: {content}"
+        )
+    return "\n\n" + "=" * 60 + "\n\n".join(lines)
 
 
 def build_research_graph(
@@ -51,69 +61,103 @@ def build_research_graph(
             timeout=300,
         )
 
-    llm_researcher = _llm(model_researcher, temperature=0.2, max_tokens=1200)
-    llm_writer     = _llm(model_writer,     temperature=0.6, max_tokens=2000)
+    llm_researcher = _llm(model_researcher, temperature=0.1, max_tokens=1500)
+    llm_writer     = _llm(model_writer,     temperature=0.4, max_tokens=2000)
     llm_critic     = _llm(model_critic,     temperature=0.1, max_tokens=2000)
-    llm_fallback   = _llm(model_fallback,   temperature=0.2, max_tokens=2000)
+    llm_fallback   = _llm(model_fallback,   temperature=0.1, max_tokens=2000)
 
     def _invoke(messages: list[Any], llm: ChatOpenAI) -> str:
-        """Invoke the LLM with fallback on any error."""
         try:
             msg = llm.invoke(messages)
         except Exception as e:
-            print(f"Primary LLM failed ({e}), using fallback...")
+            print(f"Primary LLM failed ({e}), trying fallback...")
+            time.sleep(3)
             msg = llm_fallback.invoke(messages)
         return msg.content if isinstance(msg.content, str) else str(msg.content)
 
     # ── NODE 1: RESEARCHER ─────────────────────────────────────────────────────
     def researcher_node(state: ResearchGraphState) -> ResearchGraphState:
-        print(f"[Researcher] Query: {state['user_query']}")
-        tavily_results = tavily_client.search(query=state["user_query"], max_results=5)
-        raw_evidence = _format_tavily_results(tavily_results)
-        print("[Researcher] Tavily done. Condensing evidence...")
+        today = _today()
+        query = state["user_query"]
+        print(f"[Researcher] Query: {query} | Date: {today}")
 
-        # Condense raw web results into a tight research brief to save tokens
-        brief = _invoke(
+        # Run TWO targeted searches to get richer, more relevant evidence
+        results_a = tavily_client.search(query=query, max_results=3)
+        time.sleep(1)
+        results_b = tavily_client.search(
+            query=f"{query} data statistics research {today[:4]}",
+            max_results=3,
+        )
+
+        raw_a = _format_tavily_results(results_a)
+        raw_b = _format_tavily_results(results_b)
+        combined_evidence = f"=== Search 1 ===\n{raw_a}\n\n=== Search 2 ===\n{raw_b}"
+
+        # Hard cap on evidence to stay within token budget
+        if len(combined_evidence) > 5000:
+            combined_evidence = combined_evidence[:5000] + "\n...[clipped]"
+
+        print("[Researcher] Tavily searches done. Building verified fact sheet...")
+
+        # The researcher's job is to be a SKEPTICAL ANALYST, not a summarizer
+        researcher_system = f"""You are a rigorous Research Analyst for ScioAI. Today is {today}.
+
+CRITICAL RULES — violating any of these is a failure:
+1. ONLY include facts that are EXPLICITLY stated in the evidence below.
+2. REJECT any source whose content is clearly irrelevant to the query (e.g., a construction bid, a job posting, an unrelated PDF).
+3. For each fact, write: "[Fact] ... [Source X]" so attribution is traceable.
+4. If a statistic or claim exists in the source, quote it EXACTLY. Do NOT round, extrapolate or paraphrase numbers.
+5. If a source's date is unknown or older than 2 years, mark it [DATED].
+6. If you find fewer than 3 genuinely relevant sources, say so explicitly.
+7. Do NOT invent sub-topics, companies, or events not mentioned in the sources.
+
+Output format: A structured "Verified Fact Sheet" with sections:
+- Relevant Sources (list only sources that are actually about the query)
+- Key Verified Facts (with [Source X] attribution on every bullet)
+- Data Points & Statistics (exact figures only, never estimated)
+- Gaps in Evidence (what the sources don't cover)"""
+
+        fact_sheet = _invoke(
             [
-                SystemMessage(content=(
-                    "You are a Research Analyst. Extract ALL key facts, statistics, "
-                    "claims and citations from the evidence. Output a numbered bullet-point "
-                    "brief. Keep EVERY URL. No padding, no fluff. Max 1000 words."
-                )),
+                SystemMessage(content=researcher_system),
                 HumanMessage(content=(
-                    f"Query: {state['user_query']}\n\nEvidence:\n{raw_evidence}"
+                    f"Research Query: {query}\n\n"
+                    f"Raw Evidence:\n{combined_evidence}"
                 )),
             ],
             llm_researcher,
         )
 
-        # Hard cap: 3500 chars (~875 tokens) so Writer batches have headroom
-        if len(brief) > 3500:
-            brief = brief[:3500] + "\n...[truncated]"
+        # Hard cap to give Writer batches enough headroom
+        if len(fact_sheet) > 3200:
+            fact_sheet = fact_sheet[:3200] + "\n...[clipped for token budget]"
 
-        print("[Researcher] Done.")
+        print(f"[Researcher] Fact sheet ready ({len(fact_sheet)} chars).")
         return {
             **state,
-            "research_data": brief,
+            "research_data": fact_sheet,
             "current_step": "research_complete",
             "workflow_steps": [*state.get("workflow_steps", []), "researcher"],
         }
 
-    # ── NODE 2: WRITER (Batched) ───────────────────────────────────────────────
+    # ── NODE 2: WRITER (Batched, anti-hallucination) ──────────────────────────
     def writer_node(state: ResearchGraphState) -> ResearchGraphState:
-        print("[Writer] Starting batched writing...")
+        today = _today()
         query = state["user_query"]
-        brief = state["research_data"]
+        facts = state["research_data"]
+        print("[Writer] Starting batched writing with anti-hallucination rules...")
 
-        # Each batch: system (~150 tokens) + query + brief (~875 tokens) + instruction (~100 tokens)
-        # Total input ~1125 tokens, leaving ~2000 tokens for output. Well under 8k TPM.
+        # Strict anti-hallucination base system prompt
+        base_system = f"""You are a rigorous Research Writer for ScioAI. Today is {today}.
 
-        base_system = (
-            "You are an expert Research Writer for ScioAI. "
-            "Write detailed, evidence-based Markdown. Cite sources inline like [1], [2]. "
-            "Every claim needs a citation from the provided research brief. "
-            "Be thorough, analytical and detailed. Do NOT truncate or summarise early."
-        )
+ABSOLUTE RULES — breaking these means the output is rejected:
+1. ONLY write claims that are directly supported by the Verified Fact Sheet provided.
+2. If a statistic is in the Fact Sheet, quote it exactly. NEVER round, inflate or extrapolate numbers.
+3. If you don't have a source for a claim, either omit it OR clearly label it [UNVERIFIED ESTIMATE].
+4. Cite every factual claim inline like [1], [2] referencing the Source numbers in the Fact Sheet.
+5. Do NOT invent organizations, reports, PDFs, or events not named in the Fact Sheet.
+6. If the evidence is thin on a subtopic, say "Evidence on this point is limited" instead of speculating.
+7. Write clearly structured, professional Markdown. Be detailed where evidence supports it."""
 
         # ── Batch 1: Title + Executive Summary + Key Findings ──────────────────
         print("[Writer] Batch 1/3: Title + Summary + Key Findings...")
@@ -121,16 +165,17 @@ def build_research_graph(
             [
                 SystemMessage(content=base_system),
                 HumanMessage(content=(
-                    f"Topic: {query}\n\nResearch Brief:\n{brief}\n\n"
-                    "Write ONLY these sections (be detailed, min 400 words total):\n"
-                    "# [Descriptive Title]\n"
+                    f"Topic: {query}\n\nVerified Fact Sheet:\n{facts}\n\n"
+                    "Write ONLY these sections. Be detailed (min 350 words). "
+                    "Every claim needs an inline citation [n].\n\n"
+                    "# [Descriptive, Specific Title — not generic]\n"
                     "## Executive Summary\n"
                     "## Key Findings\n"
                 )),
             ],
             llm_writer,
         )
-        time.sleep(2)  # Pause to avoid hitting per-minute rate limits
+        time.sleep(3)  # Respect rate limits between batches
 
         # ── Batch 2: Deep Analysis + Implications ──────────────────────────────
         print("[Writer] Batch 2/3: Deep Analysis + Implications...")
@@ -138,15 +183,16 @@ def build_research_graph(
             [
                 SystemMessage(content=base_system),
                 HumanMessage(content=(
-                    f"Topic: {query}\n\nResearch Brief:\n{brief}\n\n"
-                    "Write ONLY these sections (be detailed, min 500 words, use subheadings):\n"
+                    f"Topic: {query}\n\nVerified Fact Sheet:\n{facts}\n\n"
+                    "Write ONLY these sections. Be analytical (min 400 words). "
+                    "Use subheadings. Mark any thin-evidence areas explicitly.\n\n"
                     "## Deep Analysis\n"
                     "## Implications\n"
                 )),
             ],
             llm_writer,
         )
-        time.sleep(2)
+        time.sleep(3)
 
         # ── Batch 3: Risks + Next Steps + Citations ─────────────────────────────
         print("[Writer] Batch 3/3: Risks + Next Steps + Citations...")
@@ -154,20 +200,21 @@ def build_research_graph(
             [
                 SystemMessage(content=base_system),
                 HumanMessage(content=(
-                    f"Topic: {query}\n\nResearch Brief:\n{brief}\n\n"
-                    "Write ONLY these sections:\n"
+                    f"Topic: {query}\n\nVerified Fact Sheet:\n{facts}\n\n"
+                    "Write ONLY these sections:\n\n"
                     "## Risks and Unknowns\n"
                     "## What to Verify Next\n"
                     "## Citations\n"
-                    "(Citations: numbered Markdown link list. Use ONLY real URLs from the Research Brief.)\n"
+                    "For Citations: numbered Markdown link list. "
+                    "ONLY include URLs that appear in the Verified Fact Sheet. "
+                    "Format: [n] [Title](URL)\n"
                 )),
             ],
             llm_writer,
         )
 
-        # Assemble all batches into one full report
-        full_draft = f"{batch1}\n\n{batch2}\n\n{batch3}"
-        print(f"[Writer] All batches complete. Draft length: {len(full_draft)} chars.")
+        full_draft = f"{batch1}\n\n---\n\n{batch2}\n\n---\n\n{batch3}"
+        print(f"[Writer] All batches done. Draft: {len(full_draft)} chars.")
 
         return {
             **state,
@@ -176,39 +223,48 @@ def build_research_graph(
             "workflow_steps": [*state.get("workflow_steps", []), "writer"],
         }
 
-    # ── NODE 3: CRITIC (Lean pass) ────────────────────────────────────────────
+    # ── NODE 3: CRITIC (Fact-checking + Polish) ───────────────────────────────
     def critic_node(state: ResearchGraphState) -> ResearchGraphState:
-        print("[Critic] Polishing report...")
-
-        # Critic only receives the draft (no raw research) to stay under 8k TPM.
-        # We pass the first 3000 chars for structural fixes, then append the rest unchanged.
+        today = _today()
         draft = state["draft"]
-        draft_for_critic = draft[:3000]
+        print("[Critic] Starting fact-check + polish pass...")
+
+        # Critic polishes the head of the draft (stays within token budget)
+        draft_for_critic = draft[:2800]
+
+        critic_system = f"""You are a Fact-Checking Editor for ScioAI. Today is {today}.
+
+Your job is to catch hallucinations and improve quality:
+1. FLAG any statistic, market size, or event claim that seems inflated or unverified. Replace with [UNVERIFIED] if unsure.
+2. Remove any citations that look fabricated (e.g., PDF filenames unrelated to the topic, made-up report names).
+3. Ensure the report does NOT claim things are current if they are from years ago.
+4. Fix any claims like "X has already happened" if the evidence suggests it is still in progress.
+5. Remove all meta-commentary ("Note: I removed...", "As an AI...").
+6. Ensure all citations in ## Citations are proper Markdown links: [n] [Title](URL).
+7. Return ONLY the corrected Markdown report."""
 
         polished_head = _invoke(
             [
-                SystemMessage(content=(
-                    "You are the Editor for ScioAI. Polish the Markdown report: "
-                    "fix broken sections, ensure all citations are proper Markdown links [n](url), "
-                    "remove any meta-commentary like 'Note: I removed...', "
-                    "improve flow. Return the corrected Markdown only."
-                )),
+                SystemMessage(content=critic_system),
                 HumanMessage(content=(
                     f"Query: {state['user_query']}\n\n"
-                    f"Report (first portion):\n{draft_for_critic}"
+                    f"Report (first section for review):\n{draft_for_critic}"
                 )),
             ],
             llm_critic,
         )
 
-        # Combine polished head with the unreviewed tail of the draft
-        if len(draft) > 3000:
-            final = polished_head + "\n\n" + draft[3000:]
-        else:
-            final = polished_head
+        # Append unreviewed tail of the draft as-is
+        final = polished_head
+        if len(draft) > 2800:
+            final = polished_head + "\n\n" + draft[2800:]
 
-        print(f"[Critic] Done. Final report length: {len(final)} chars.")
+        # Sanity check: if critic truncated too aggressively, use original draft
+        if len(final) < len(draft) * 0.4:
+            print("[Critic] Output too short, reverting to original draft.")
+            final = draft
 
+        print(f"[Critic] Done. Final report: {len(final)} chars.")
         return {
             **state,
             "final_report": final,
