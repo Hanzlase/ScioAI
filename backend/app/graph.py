@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -23,17 +24,13 @@ def _format_tavily_results(search_payload: dict[str, Any]) -> str:
         return "No Tavily web results were returned."
 
     lines: list[str] = []
-    # Reduced to top 5 results to save tokens
     for idx, item in enumerate(entries[:5], start=1):
         title = item.get("title", "Untitled")
         url = item.get("url", "")
-        # Truncate content to ~1000 chars per result
-        content = (item.get("content", "") or "").strip()[:1000]
-        lines.append(f"[{idx}] {title}\nSource: {url}\nEvidence: {content}")
-    return "\n\n".join(lines)
-
-
-
+        # Truncate each result to ~800 chars to save tokens
+        content = (item.get("content", "") or "").strip()[:800]
+        lines.append(f"[{idx}] {title}\nURL: {url}\n{content}")
+    return "\n\n---\n\n".join(lines)
 
 
 def build_research_graph(
@@ -45,156 +42,181 @@ def build_research_graph(
     model_fallback: str,
 ):
     def _llm(model: str, *, temperature: float, max_tokens: int) -> ChatOpenAI:
-
-        # Groq is OpenAI-compatible via their API endpoint.
         return ChatOpenAI(
             api_key=groq_api_key,
             base_url="https://api.groq.com/openai/v1",
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
-            timeout=300, # Increased to 5 minutes for long reports
+            timeout=300,
         )
 
-    # Reduced max_tokens to stay under 8k total (Prompt + Completion)
-    llm_researcher = _llm(model_researcher, temperature=0.25, max_tokens=1500)
-    llm_writer = _llm(model_writer, temperature=0.6, max_tokens=4000)
-    llm_critic = _llm(model_critic, temperature=0.15, max_tokens=4000)
-    llm_fallback = _llm(model_fallback, temperature=0.2, max_tokens=4000)
+    llm_researcher = _llm(model_researcher, temperature=0.2, max_tokens=1200)
+    llm_writer     = _llm(model_writer,     temperature=0.6, max_tokens=2000)
+    llm_critic     = _llm(model_critic,     temperature=0.1, max_tokens=2000)
+    llm_fallback   = _llm(model_fallback,   temperature=0.2, max_tokens=2000)
 
-    def _invoke_with_fallback(messages: list[Any], primary: ChatOpenAI) -> str:
+    def _invoke(messages: list[Any], llm: ChatOpenAI) -> str:
+        """Invoke the LLM with fallback on any error."""
         try:
-            msg = primary.invoke(messages)
-        except Exception:
+            msg = llm.invoke(messages)
+        except Exception as e:
+            print(f"Primary LLM failed ({e}), using fallback...")
             msg = llm_fallback.invoke(messages)
         return msg.content if isinstance(msg.content, str) else str(msg.content)
 
+    # ── NODE 1: RESEARCHER ─────────────────────────────────────────────────────
     def researcher_node(state: ResearchGraphState) -> ResearchGraphState:
-        print(f"--- Entering Researcher Node for query: {state['user_query']} ---")
-        query = state["user_query"]
-        print("Tavily search starting...")
-        # Get 5 results
-        tavily_search = tavily_client.search(query=query, max_results=5)
-        print("Tavily search complete.")
-        web_context = _format_tavily_results(tavily_search)
+        print(f"[Researcher] Query: {state['user_query']}")
+        tavily_results = tavily_client.search(query=state["user_query"], max_results=5)
+        raw_evidence = _format_tavily_results(tavily_results)
+        print("[Researcher] Tavily done. Condensing evidence...")
 
-        # We summarize the evidence immediately to save tokens for the writer.
-        researcher_prompt = (
-            "You are the Research Analyst for ScioAI.\n"
-            "Your goal is to extract ALL critical facts, data points, and citations from the evidence below.\n"
-            "Format your output as a 'Condensed Research Brief' with bullet points.\n"
-            "Maintain all URLs and citations. Be extremely dense and factual. No fluff."
-        )
-        
-        condensed_brief = _invoke_with_fallback(
+        # Condense raw web results into a tight research brief to save tokens
+        brief = _invoke(
             [
-                SystemMessage(content=researcher_prompt),
-                HumanMessage(
-                    content=(
-                        f"User Query: {state['user_query']}\n\n"
-                        f"Evidence:\n{web_context}"
-                    )
-                ),
+                SystemMessage(content=(
+                    "You are a Research Analyst. Extract ALL key facts, statistics, "
+                    "claims and citations from the evidence. Output a numbered bullet-point "
+                    "brief. Keep EVERY URL. No padding, no fluff. Max 1000 words."
+                )),
+                HumanMessage(content=(
+                    f"Query: {state['user_query']}\n\nEvidence:\n{raw_evidence}"
+                )),
             ],
             llm_researcher,
         )
 
-        # Final safety check: hard truncate the research data to ~12k chars 
-        # to ensure we never exceed the 8k token limit (Prompt + Completion).
-        final_data = f"## Research Brief\n{condensed_brief}"
-        if len(final_data) > 12000:
-            final_data = final_data[:12000] + "\n... [truncated for token limits] ..."
+        # Hard cap: 3500 chars (~875 tokens) so Writer batches have headroom
+        if len(brief) > 3500:
+            brief = brief[:3500] + "\n...[truncated]"
 
+        print("[Researcher] Done.")
         return {
             **state,
-            "research_data": final_data,
+            "research_data": brief,
             "current_step": "research_complete",
             "workflow_steps": [*state.get("workflow_steps", []), "researcher"],
         }
 
+    # ── NODE 2: WRITER (Batched) ───────────────────────────────────────────────
     def writer_node(state: ResearchGraphState) -> ResearchGraphState:
-        print("--- Entering Writer Node ---")
-        writer_prompt = (
-            "You are the Writer agent for ScioAI.\n\n"
-            "Goal: Produce a detailed, citation-grounded research report in Markdown.\n"
-            "Write for a technical audience, but keep it readable.\n\n"
-            "Hard requirements:\n"
-            "- Length: at least 900 words (unless user explicitly asked for concise).\n"
-            "- Use the exact section headings below.\n"
-            "- Every major claim must include an inline citation like [1].\n"
-            "- The '## Citations' section must be a numbered list where EACH item is a clickable Markdown link:\n"
-            "  Example: [1] [Article title](https://example.com)\n"
-            "- Do NOT invent sources. Only use URLs present in Tavily Evidence.\n"
-            "- If a citation is missing a URL, omit it.\n\n"
-            "Required sections:\n"
-            "# Title\n"
-            "## Executive Summary\n"
-            "## Key Findings\n"
-            "## Deep Analysis\n"
-            "## Risks and Unknowns\n"
-            "## What to verify next\n"
-            "## Citations\n"
+        print("[Writer] Starting batched writing...")
+        query = state["user_query"]
+        brief = state["research_data"]
+
+        # Each batch: system (~150 tokens) + query + brief (~875 tokens) + instruction (~100 tokens)
+        # Total input ~1125 tokens, leaving ~2000 tokens for output. Well under 8k TPM.
+
+        base_system = (
+            "You are an expert Research Writer for ScioAI. "
+            "Write detailed, evidence-based Markdown. Cite sources inline like [1], [2]. "
+            "Every claim needs a citation from the provided research brief. "
+            "Be thorough, analytical and detailed. Do NOT truncate or summarise early."
         )
 
-        print("LLM Writer starting...")
-        draft = _invoke_with_fallback(
+        # ── Batch 1: Title + Executive Summary + Key Findings ──────────────────
+        print("[Writer] Batch 1/3: Title + Summary + Key Findings...")
+        batch1 = _invoke(
             [
-                SystemMessage(content=writer_prompt),
-                HumanMessage(
-                    content=(
-                        f"User Query:\n{state['user_query']}\n\n"
-                        f"Research Data:\n{state['research_data']}"
-                    )
-                ),
+                SystemMessage(content=base_system),
+                HumanMessage(content=(
+                    f"Topic: {query}\n\nResearch Brief:\n{brief}\n\n"
+                    "Write ONLY these sections (be detailed, min 400 words total):\n"
+                    "# [Descriptive Title]\n"
+                    "## Executive Summary\n"
+                    "## Key Findings\n"
+                )),
             ],
             llm_writer,
         )
-        print("LLM Writer complete.")
+        time.sleep(2)  # Pause to avoid hitting per-minute rate limits
+
+        # ── Batch 2: Deep Analysis + Implications ──────────────────────────────
+        print("[Writer] Batch 2/3: Deep Analysis + Implications...")
+        batch2 = _invoke(
+            [
+                SystemMessage(content=base_system),
+                HumanMessage(content=(
+                    f"Topic: {query}\n\nResearch Brief:\n{brief}\n\n"
+                    "Write ONLY these sections (be detailed, min 500 words, use subheadings):\n"
+                    "## Deep Analysis\n"
+                    "## Implications\n"
+                )),
+            ],
+            llm_writer,
+        )
+        time.sleep(2)
+
+        # ── Batch 3: Risks + Next Steps + Citations ─────────────────────────────
+        print("[Writer] Batch 3/3: Risks + Next Steps + Citations...")
+        batch3 = _invoke(
+            [
+                SystemMessage(content=base_system),
+                HumanMessage(content=(
+                    f"Topic: {query}\n\nResearch Brief:\n{brief}\n\n"
+                    "Write ONLY these sections:\n"
+                    "## Risks and Unknowns\n"
+                    "## What to Verify Next\n"
+                    "## Citations\n"
+                    "(Citations: numbered Markdown link list. Use ONLY real URLs from the Research Brief.)\n"
+                )),
+            ],
+            llm_writer,
+        )
+
+        # Assemble all batches into one full report
+        full_draft = f"{batch1}\n\n{batch2}\n\n{batch3}"
+        print(f"[Writer] All batches complete. Draft length: {len(full_draft)} chars.")
 
         return {
             **state,
-            "draft": draft,
+            "draft": full_draft,
             "current_step": "draft_complete",
             "workflow_steps": [*state.get("workflow_steps", []), "writer"],
         }
 
+    # ── NODE 3: CRITIC (Lean pass) ────────────────────────────────────────────
     def critic_node(state: ResearchGraphState) -> ResearchGraphState:
-        print("--- Entering Critic Node ---")
-        critic_prompt = (
-            "You are the Critic agent for ScioAI.\n"
-            "Review the draft against the original query and the provided research data.\n\n"
-            "Hard requirements:\n"
-            "1) Keep tone objective and analytical.\n"
-            "2) Ensure the report is detailed (do not over-compress).\n"
-            "3) Ensure every source in '## Citations' is a Markdown link with a real URL from Tavily.\n"
-            "4) Remove unsupported claims; add more citations where needed.\n"
-            "5) Remove any meta-notes like 'Note: I removed...' from the final answer.\n\n"
-            "Return only the improved markdown report."
-        )
+        print("[Critic] Polishing report...")
 
-        print("LLM Critic starting...")
-        final_report = _invoke_with_fallback(
+        # Critic only receives the draft (no raw research) to stay under 8k TPM.
+        # We pass the first 3000 chars for structural fixes, then append the rest unchanged.
+        draft = state["draft"]
+        draft_for_critic = draft[:3000]
+
+        polished_head = _invoke(
             [
-                SystemMessage(content=critic_prompt),
-                HumanMessage(
-                    content=(
-                        f"Original Query:\n{state['user_query']}\n\n"
-                        f"Research Data (authoritative sources):\n{state['research_data']}\n\n"
-                        f"Draft to review:\n{state['draft']}"
-                    )
-                ),
+                SystemMessage(content=(
+                    "You are the Editor for ScioAI. Polish the Markdown report: "
+                    "fix broken sections, ensure all citations are proper Markdown links [n](url), "
+                    "remove any meta-commentary like 'Note: I removed...', "
+                    "improve flow. Return the corrected Markdown only."
+                )),
+                HumanMessage(content=(
+                    f"Query: {state['user_query']}\n\n"
+                    f"Report (first portion):\n{draft_for_critic}"
+                )),
             ],
             llm_critic,
         )
-        print("LLM Critic complete.")
+
+        # Combine polished head with the unreviewed tail of the draft
+        if len(draft) > 3000:
+            final = polished_head + "\n\n" + draft[3000:]
+        else:
+            final = polished_head
+
+        print(f"[Critic] Done. Final report length: {len(final)} chars.")
 
         return {
             **state,
-            "final_report": final_report,
+            "final_report": final,
             "current_step": "critic_complete",
             "workflow_steps": [*state.get("workflow_steps", []), "critic"],
         }
 
+    # ── Build LangGraph ───────────────────────────────────────────────────────
     workflow = StateGraph(ResearchGraphState)
     workflow.add_node("researcher", researcher_node)
     workflow.add_node("writer", writer_node)
