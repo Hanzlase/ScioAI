@@ -20,7 +20,10 @@ import remarkGfm from "remark-gfm";
 
 import { ChatSession } from "@/types/chat";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 
+  (typeof window !== "undefined" && window.location.hostname === "localhost" 
+    ? "http://localhost:8000" 
+    : "https://scioai-backend-production.up.railway.app");
 
 interface ChatWindowProps {
   sessionId: string | null;

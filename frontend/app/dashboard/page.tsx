@@ -7,7 +7,11 @@ import { Sparkles, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// Use the environment variable if provided, otherwise default to localhost for development.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 
+  (typeof window !== "undefined" && window.location.hostname === "localhost" 
+    ? "http://localhost:8000" 
+    : "https://scioai-backend-production.up.railway.app");
 
 interface ChatApiResponse {
   response: string;
