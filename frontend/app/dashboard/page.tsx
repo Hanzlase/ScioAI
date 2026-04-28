@@ -163,7 +163,7 @@ export default function AppPage() {
             onOpenSidebar={() => setMobileSidebarOpen(true)}
           />
         ) : (
-          <div className="card flex h-full flex-col sm:rounded-2xl">
+          <div className="card flex h-full flex-col sm:rounded-2xl border-0 sm:border">
             {/* Mobile Header for Empty State */}
             <div className="flex items-center border-b px-4 py-3 lg:hidden" style={{ borderColor: "var(--c-100)" }}>
               <button

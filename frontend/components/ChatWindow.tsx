@@ -214,14 +214,14 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
             <Menu size={22} />
           </button>
         )}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "var(--c-900)" }}>
-          <Sparkles size={16} className="text-white" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10" style={{ background: "var(--c-900)" }}>
+          <Sparkles size={14} className="text-white sm:size-[16px]" />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-heading text-base font-bold sm:text-lg" style={{ color: "var(--c-900)" }}>
+          <h1 className="truncate font-heading text-sm font-bold sm:text-lg" style={{ color: "var(--c-900)" }}>
             {session?.title ?? "ScioAI Research Agent"}
           </h1>
-          <p className="text-xs sm:text-sm" style={{ color: "var(--c-500)" }}>
+          <p className="truncate text-[10px] sm:text-sm" style={{ color: "var(--c-500)" }}>
             Researcher · Writer · Critic · High-Performance LLMs
           </p>
         </div>
@@ -276,7 +276,7 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
           </div>
         ) : (
           /* Messages */
-          <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+          <div className="space-y-6 p-3 sm:p-6 lg:p-8 overflow-x-hidden">
             <AnimatePresence initial={false}>
               {session.messages.map((msg, idx) => {
                 const isUser   = msg.role === "user";
@@ -288,23 +288,23 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className={`flex gap-3 sm:gap-4 ${isUser ? "flex-row-reverse" : ""}`}
+                    className={`flex items-start gap-2 sm:gap-4 ${isUser ? "flex-row-reverse" : ""}`}
                   >
                     {/* Avatar */}
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border mt-1" 
+                    <div className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full border mt-1" 
                       style={{
                         background: isUser ? "var(--c-900)" : isError ? "var(--c-100)" : "#fff",
                         borderColor: isUser ? "var(--c-900)" : "var(--c-200)",
                         color: isUser ? "#fff" : isError ? "var(--c-500)" : "var(--c-700)"
                       }}
                     >
-                      {isUser ? <User size={16} /> : <Bot size={16} />}
+                      {isUser ? <User size={14} className="sm:size-[16px]" /> : <Bot size={14} className="sm:size-[16px]" />}
                     </div>
 
-                    <div className={`flex max-w-[85%] flex-col gap-2 ${isUser ? "items-end" : "items-start"}`}>
+                    <div className={`flex min-w-0 w-full max-w-[85%] flex-col gap-2 overflow-hidden ${isUser ? "items-end" : "items-start"}`}>
                       {/* Bubble */}
                       <div
-                        className="rounded-2xl px-5 py-4 text-base leading-relaxed"
+                        className="rounded-2xl px-4 py-3 sm:px-5 sm:py-4 text-base leading-relaxed w-full overflow-hidden break-words"
                         style={{
                            background: isUser ? "var(--c-900)" : isError ? "var(--c-50)" : "#fff",
                            border: isUser ? "none" : "1px solid var(--c-200)",
@@ -316,7 +316,7 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
                         {isUser || isError ? (
                           <span className="whitespace-pre-wrap">{msg.content}</span>
                         ) : (
-                          <div id={`ai-message-${idx}`}>
+                          <div id={`ai-message-${idx}`} className="w-full min-w-0">
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               className="scio-markdown"
@@ -453,11 +453,11 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
       {/* Input */}
       <form
         onSubmit={handleSubmit}
-        className="border-t px-4 py-4 sm:px-6 sm:py-5"
+        className="border-t px-3 py-4 sm:px-6 sm:py-5"
         style={{ borderColor: "var(--c-100)", background: "var(--c-50)" }}
       >
         <div
-          className="flex items-end gap-3 rounded-2xl border px-5 py-3.5 transition-shadow focus-within:shadow-md"
+          className="flex items-end gap-2 rounded-2xl border px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-3.5 transition-shadow focus-within:shadow-md"
           style={{
             borderColor: "var(--c-200)",
             background: "#fff",
@@ -480,14 +480,14 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
             type="submit"
             disabled={!canSend}
             id="chat-send-btn"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition disabled:opacity-30"
+            className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl transition disabled:opacity-30"
             style={{ background: "var(--c-900)", color: "#fff" }}
             onMouseEnter={(e) => { if (canSend) e.currentTarget.style.background = "var(--c-800)" }}
             onMouseLeave={(e) => { if (canSend) e.currentTarget.style.background = "var(--c-900)" }}
           >
             {isLoading
               ? <LoaderCircle className="h-4 w-4 animate-spin" />
-              : <SendHorizontal size={18} />}
+              : <SendHorizontal className="size-[18px]" />}
           </button>
         </div>
         <p className="mt-3 text-center text-xs font-medium" style={{ color: "var(--c-400)" }}>

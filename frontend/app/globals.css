@@ -24,7 +24,7 @@
 
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; height: 100%; overflow-x: hidden; width: 100%; }
 
 html {
   font-size: 15px;
@@ -232,6 +232,11 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-body);
   font-size:   0.9375rem;
   line-height: 1.75;
+  /* Critical: prevent text from overflowing its container */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+  overflow: hidden;
 }
 .scio-markdown > :first-child { margin-top: 0; }
 .scio-markdown > :last-child  { margin-bottom: 0; }
@@ -244,9 +249,15 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700; line-height: 1.25;
   margin-top: 1.3rem; margin-bottom: 0.5rem;
 }
-.scio-markdown h1 { font-size: 1.4rem; }
-.scio-markdown h2 { font-size: 1.2rem; border-bottom: 1px solid var(--c-200); padding-bottom: 0.3rem; }
-.scio-markdown h3 { font-size: 1.05rem; }
+.scio-markdown h1 { font-size: 1.25rem; }
+.scio-markdown h2 { font-size: 1.1rem; border-bottom: 1px solid var(--c-200); padding-bottom: 0.3rem; }
+.scio-markdown h3 { font-size: 1rem; }
+
+@media (min-width: 640px) {
+  .scio-markdown h1 { font-size: 1.4rem; }
+  .scio-markdown h2 { font-size: 1.2rem; }
+  .scio-markdown h3 { font-size: 1.05rem; }
+}
 
 .scio-markdown p         { margin: 0.6rem 0; }
 .scio-markdown ul,
@@ -272,11 +283,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 .scio-markdown table {
   margin: 0.8rem 0; width: 100%; border-collapse: collapse;
-  font-size: 0.9em; border-radius: 8px; overflow: hidden; border: 1px solid var(--c-200);
+  font-size: 0.9em; border-radius: 8px; border: 1px solid var(--c-200);
+  display: block; overflow-x: auto; white-space: nowrap;
 }
 .scio-markdown thead { background: var(--c-100); color: var(--c-900); }
 .scio-markdown th,
-.scio-markdown td { border: 1px solid var(--c-200); padding: 0.45rem 0.7rem; text-align: left; }
+.scio-markdown td { border: 1px solid var(--c-200); padding: 0.45rem 0.7rem; text-align: left; min-width: 100px; }
 .scio-markdown tbody tr:hover { background: var(--c-50); }
 .scio-markdown hr { margin: 0.9rem 0; border: none; border-top: 1px solid var(--c-200); }
 .scio-markdown a { color: var(--c-900); text-decoration: underline; text-decoration-color: var(--c-300); }
