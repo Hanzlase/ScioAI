@@ -61,11 +61,11 @@ def build_research_graph(
             timeout=300,
         )
 
-    # Increased max_tokens significantly to allow for much more detailed results
-    llm_researcher = _llm(model_researcher, temperature=0.1, max_tokens=4000)
-    llm_writer     = _llm(model_writer,     temperature=0.4, max_tokens=8000)
-    llm_critic     = _llm(model_critic,     temperature=0.1, max_tokens=8000)
-    llm_fallback   = _llm(model_fallback,   temperature=0.1, max_tokens=8000)
+    # Kept max_tokens lower to respect strict 8000 TPM limit on free tier
+    llm_researcher = _llm(model_researcher, temperature=0.1, max_tokens=1500)
+    llm_writer     = _llm(model_writer,     temperature=0.4, max_tokens=2500)
+    llm_critic     = _llm(model_critic,     temperature=0.1, max_tokens=3000)
+    llm_fallback   = _llm(model_fallback,   temperature=0.1, max_tokens=3000)
 
     def _invoke(messages: list[Any], llm: ChatOpenAI) -> str:
         max_retries = 3
@@ -105,9 +105,9 @@ def build_research_graph(
         raw_b = _format_tavily_results(results_b)
         combined_evidence = f"=== Search 1 ===\n{raw_a}\n\n=== Search 2 ===\n{raw_b}"
 
-        # Relaxed cap to allow detailed fact gathering
-        if len(combined_evidence) > 20000:
-            combined_evidence = combined_evidence[:20000] + "\n...[clipped]"
+        # Relaxed cap but kept under TPM limits (8000 chars is ~2000 tokens)
+        if len(combined_evidence) > 8000:
+            combined_evidence = combined_evidence[:8000] + "\n...[clipped]"
 
         print("[Researcher] Tavily searches done. Building verified fact sheet...")
 
@@ -139,9 +139,9 @@ Output format: A highly detailed, structured "Verified Fact Sheet" with sections
             llm_researcher,
         )
 
-        # Relaxed char limit to 15000 to retain deep insights
-        if len(fact_sheet) > 15000:
-            fact_sheet = fact_sheet[:15000] + "\n...[clipped for token budget]"
+        # Relaxed char limit to 6000 (~1500 tokens) to retain deep insights without hitting rate limits
+        if len(fact_sheet) > 6000:
+            fact_sheet = fact_sheet[:6000] + "\n...[clipped for token budget]"
 
         print(f"[Researcher] Fact sheet ready ({len(fact_sheet)} chars).")
         return {
@@ -208,16 +208,17 @@ ABSOLUTE RULES — breaking these means the output is rejected:
             )),
         ]
 
-        # Execute batches in parallel for speed and detail
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            print("[Writer] Running 3 concurrent batches...")
-            future1 = executor.submit(_invoke, msg1, llm_writer)
-            future2 = executor.submit(_invoke, msg2, llm_writer)
-            future3 = executor.submit(_invoke, msg3, llm_writer)
+        # Execute batches sequentially with delays to respect the 8000 TPM limit
+        print("[Writer] Batch 1/3: Title + Summary + Key Findings...")
+        batch1 = _invoke(msg1, llm_writer)
+        time.sleep(12)  # Generous sleep to reset TPM bucket
 
-            batch1 = future1.result()
-            batch2 = future2.result()
-            batch3 = future3.result()
+        print("[Writer] Batch 2/3: Deep Analysis + Implications...")
+        batch2 = _invoke(msg2, llm_writer)
+        time.sleep(12)
+
+        print("[Writer] Batch 3/3: Risks + Next Steps + Citations...")
+        batch3 = _invoke(msg3, llm_writer)
 
         full_draft = f"{batch1}\n\n---\n\n{batch2}\n\n---\n\n{batch3}"
         print(f"[Writer] All batches done. Draft: {len(full_draft)} chars.")
