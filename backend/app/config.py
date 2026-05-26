@@ -12,7 +12,7 @@ class Settings:
     groq_api_key: str
     tavily_api_key: str
 
-    # Model routing (Groq model IDs)
+    # Model routing [Groq model IDs]
     model_researcher: str
     model_writer: str
     model_critic: str
