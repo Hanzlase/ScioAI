@@ -1,6 +1,3 @@
-# Railway configuration for the FastAPI backend
-# https://docs.railway.app/guides/configure
-
 [build]
 builder = "NIXPACKS"
 
