@@ -154,7 +154,7 @@ export default function LandingPage() {
           <motion.div {...up(0)}>
             <span className="badge mb-6 inline-flex">
               <span className="h-2 w-2 rounded-full" style={{ background: "var(--c-400)" }} />
-              Autonomous Research · LangGraph + Groq
+              Autonomous Deep Research · LangGraph + Groq
             </span>
           </motion.div>
 
