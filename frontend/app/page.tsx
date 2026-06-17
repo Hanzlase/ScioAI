@@ -151,12 +151,7 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <section className="hero-surface border-b px-5 py-20 sm:py-28 lg:py-36" style={{ borderColor: "var(--c-100)" }}>
         <div className="mx-auto max-w-3xl text-center">
-          <motion.div {...up(0)}>
-            <span className="badge mb-6 inline-flex">
-              <span className="h-2 w-2 rounded-full" style={{ background: "var(--c-400)" }} />
-              Autonomous Deep Research · LangGraph + Groq
-            </span>
-          </motion.div>
+
 
           <motion.h1
             {...up(0.08)}
