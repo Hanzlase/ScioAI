@@ -23,7 +23,7 @@ from .graph import build_research_graph
 from .models import ChatRequest, ChatResponse, PDFRequest
 
 
-app = FastAPI(title="ScioAI Backend", version="0.3.1")
+app = FastAPI(title="ScioAI Backend", version="0.3.2")
 
 app.add_middleware(
     CORSMiddleware,
