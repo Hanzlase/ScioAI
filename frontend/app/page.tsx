@@ -1,3 +1,4 @@
+// ScioAI Landing Page - Autonomous Deep Research Platform
 "use client";
 
 import Link from "next/link";

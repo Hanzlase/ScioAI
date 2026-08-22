@@ -1,3 +1,4 @@
+// Root layout configuration for ScioAI Frontend
 import type { Metadata } from "next";
 import "./globals.css";
 
