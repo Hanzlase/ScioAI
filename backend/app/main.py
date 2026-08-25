@@ -1,5 +1,7 @@
+import asyncio
 import io
 import re
+from contextlib import asynccontextmanager
 
 import markdown as md
 from fastapi import FastAPI, HTTPException, Response
@@ -23,7 +25,45 @@ from .graph import build_research_graph
 from .models import ChatRequest, ChatResponse, PDFRequest
 
 
-app = FastAPI(title="ScioAI Backend", version="0.3.2")
+# ── Graph singleton ───────────────────────────────────────────────────────────
+_research_graph = None
+
+
+def _get_graph():
+    return _research_graph
+
+
+# ── Lifespan: eagerly init the graph at startup ───────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Build the research graph during startup so the first real request is
+    not penalized with LLM-client initialization cost.  Runs in a thread to
+    avoid blocking the event loop."""
+    global _research_graph
+    try:
+        settings = get_settings()
+        tavily_client = TavilyClient(api_key=settings.tavily_api_key)
+        _research_graph = await asyncio.to_thread(
+            build_research_graph,
+            tavily_client=tavily_client,
+            groq_api_key=settings.groq_api_key,
+            model_researcher=settings.model_researcher,
+            model_writer=settings.model_writer,
+            model_critic=settings.model_critic,
+            model_fallback=settings.model_fallback,
+        )
+        print("[Startup] Research graph initialized and ready.")
+    except Exception as e:
+        # Allow the server to start even if env vars are missing (e.g. during
+        # Railway container health-check before secrets are injected).
+        print(f"[Startup] Graph init skipped (env vars not yet available): {e}")
+        _research_graph = None
+    yield  # Server runs here
+    # Cleanup — nothing needed
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
+app = FastAPI(title="ScioAI Backend", version="0.3.2", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,34 +72,14 @@ app.add_middleware(
         "http://localhost:3001",
         "https://scioai.up.railway.app",
     ],
-    allow_origin_regex=r"https://.*\.up\.railway\.app", # Allow all Railway subdomains
+    allow_origin_regex=r"https://.*\.up\.railway\.app",  # Allow all Railway subdomains
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Lazy initialization — defers API key validation to first request.
-# This allows the app to boot and pass the /health check even if env vars
-# are not yet injected (e.g., during Railway container startup).
-_research_graph = None
 
-
-def _get_graph():
-    global _research_graph
-    if _research_graph is None:
-        settings = get_settings()
-        tavily_client = TavilyClient(api_key=settings.tavily_api_key)
-        _research_graph = build_research_graph(
-            tavily_client=tavily_client,
-            groq_api_key=settings.groq_api_key,
-            model_researcher=settings.model_researcher,
-            model_writer=settings.model_writer,
-            model_critic=settings.model_critic,
-            model_fallback=settings.model_fallback,
-        )
-    return _research_graph
-
-
+# ── Helpers ───────────────────────────────────────────────────────────────────
 def _safe_filename(raw_name: str) -> str:
     cleaned = re.sub(r"[^a-zA-Z0-9_-]+", "-", raw_name.strip())
     cleaned = cleaned.strip("-_")
@@ -280,13 +300,34 @@ def _markdown_to_story(markdown_text: str) -> list:
     return story
 
 
+# ── Routes ────────────────────────────────────────────────────────────────────
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
+async def chat(request: ChatRequest) -> ChatResponse:
+    """Run the research graph in a thread pool so FastAPI's event loop stays
+    free to handle other requests while the long LLM pipeline runs."""
+    graph = _get_graph()
+    if graph is None:
+        # Startup init failed (missing env vars) — attempt lazy init now
+        try:
+            settings = get_settings()
+            tavily_client = TavilyClient(api_key=settings.tavily_api_key)
+            graph = await asyncio.to_thread(
+                build_research_graph,
+                tavily_client=tavily_client,
+                groq_api_key=settings.groq_api_key,
+                model_researcher=settings.model_researcher,
+                model_writer=settings.model_writer,
+                model_critic=settings.model_critic,
+                model_fallback=settings.model_fallback,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"Service not ready: {exc}") from exc
+
     initial_state = {
         "user_query": request.query,
         "research_data": "",
@@ -297,8 +338,8 @@ def chat(request: ChatRequest) -> ChatResponse:
     }
 
     try:
-        graph = _get_graph()
-        final_state = graph.invoke(initial_state)
+        # Run the blocking graph.invoke() in a thread — never blocks the event loop
+        final_state = await asyncio.to_thread(graph.invoke, initial_state)
         final_report = final_state.get("final_report") or final_state.get("draft")
         if not final_report:
             raise ValueError("LangGraph run completed without a final report.")

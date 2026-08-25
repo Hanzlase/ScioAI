@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Any, TypedDict
 
@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from tavily import TavilyClient
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 
 class ResearchGraphState(TypedDict):
@@ -66,13 +67,25 @@ def build_research_graph(
     llm_critic     = _llm(model_critic,     temperature=0.1, max_tokens=2000)
     llm_fallback   = _llm(model_fallback,   temperature=0.1, max_tokens=2000)
 
+    # Retry only on real rate-limit / server errors — no artificial sleeps.
+    # wait_exponential: 2s → 4s → 8s ... up to 30s, max 3 attempts.
+    @retry(
+        retry=retry_if_exception_type(Exception),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        stop=stop_after_attempt(3),
+        reraise=True,
+    )
     def _invoke(messages: list[Any], llm: ChatOpenAI) -> str:
         try:
             msg = llm.invoke(messages)
         except Exception as e:
-            print(f"Primary LLM failed ({e}), trying fallback...")
-            time.sleep(3)
-            msg = llm_fallback.invoke(messages)
+            err_str = str(e).lower()
+            # Only fall back for rate-limit or overload errors
+            if any(k in err_str for k in ("rate_limit", "rate limit", "429", "overloaded", "503")):
+                print(f"[LLM] Rate-limit/overload ({e}), trying fallback model...")
+                msg = llm_fallback.invoke(messages)
+            else:
+                raise
         return msg.content if isinstance(msg.content, str) else str(msg.content)
 
     # ── NODE 1: RESEARCHER ─────────────────────────────────────────────────────
@@ -81,13 +94,21 @@ def build_research_graph(
         query = state["user_query"]
         print(f"[Researcher] Query: {query} | Date: {today}")
 
-        # Run TWO targeted searches to get richer, more relevant evidence
-        results_a = tavily_client.search(query=query, max_results=3)
-        time.sleep(1)
-        results_b = tavily_client.search(
-            query=f"{query} data statistics research {today[:4]}",
-            max_results=3,
-        )
+        # Run BOTH Tavily searches concurrently — saves 1-3s
+        def _search_a():
+            return tavily_client.search(query=query, max_results=3)
+
+        def _search_b():
+            return tavily_client.search(
+                query=f"{query} data statistics research {today[:4]}",
+                max_results=3,
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_a = pool.submit(_search_a)
+            fut_b = pool.submit(_search_b)
+            results_a = fut_a.result()
+            results_b = fut_b.result()
 
         raw_a = _format_tavily_results(results_a)
         raw_b = _format_tavily_results(results_b)
@@ -140,7 +161,7 @@ Output format: A structured "Verified Fact Sheet" with sections:
             "workflow_steps": [*state.get("workflow_steps", []), "researcher"],
         }
 
-    # ── NODE 2: WRITER (Batched, anti-hallucination) ──────────────────────────
+    # ── NODE 2: WRITER (Parallel batches 2+3, anti-hallucination) ─────────────
     def writer_node(state: ResearchGraphState) -> ResearchGraphState:
         today = _today()
         query = state["user_query"]
@@ -160,6 +181,7 @@ ABSOLUTE RULES — breaking these means the output is rejected:
 7. Write clearly structured, professional Markdown. Be detailed where evidence supports it."""
 
         # ── Batch 1: Title + Executive Summary + Key Findings ──────────────────
+        # Runs first (its output is used as the report header).
         print("[Writer] Batch 1/3: Title + Summary + Key Findings...")
         batch1 = _invoke(
             [
@@ -175,43 +197,49 @@ ABSOLUTE RULES — breaking these means the output is rejected:
             ],
             llm_writer,
         )
-        time.sleep(3)  # Respect rate limits between batches
 
-        # ── Batch 2: Deep Analysis + Implications ──────────────────────────────
-        print("[Writer] Batch 2/3: Deep Analysis + Implications...")
-        batch2 = _invoke(
-            [
-                SystemMessage(content=base_system),
-                HumanMessage(content=(
-                    f"Topic: {query}\n\nVerified Fact Sheet:\n{facts}\n\n"
-                    "Write ONLY these sections. Be analytical (min 400 words). "
-                    "Use subheadings. Mark any thin-evidence areas explicitly.\n\n"
-                    "## Deep Analysis\n"
-                    "## Implications\n"
-                )),
-            ],
-            llm_writer,
-        )
-        time.sleep(3)
+        # ── Batches 2 + 3: Run concurrently — saves 10-20s ────────────────────
+        # Both batches receive the same `facts` context and are independent.
+        print("[Writer] Batches 2+3 running in parallel...")
 
-        # ── Batch 3: Risks + Next Steps + Citations ─────────────────────────────
-        print("[Writer] Batch 3/3: Risks + Next Steps + Citations...")
-        batch3 = _invoke(
-            [
-                SystemMessage(content=base_system),
-                HumanMessage(content=(
-                    f"Topic: {query}\n\nVerified Fact Sheet:\n{facts}\n\n"
-                    "Write ONLY these sections:\n\n"
-                    "## Risks and Unknowns\n"
-                    "## What to Verify Next\n"
-                    "## Citations\n"
-                    "For Citations: numbered Markdown link list. "
-                    "ONLY include URLs that appear in the Verified Fact Sheet. "
-                    "Format: [n] [Title](URL)\n"
-                )),
-            ],
-            llm_writer,
-        )
+        def _batch2():
+            return _invoke(
+                [
+                    SystemMessage(content=base_system),
+                    HumanMessage(content=(
+                        f"Topic: {query}\n\nVerified Fact Sheet:\n{facts}\n\n"
+                        "Write ONLY these sections. Be analytical (min 400 words). "
+                        "Use subheadings. Mark any thin-evidence areas explicitly.\n\n"
+                        "## Deep Analysis\n"
+                        "## Implications\n"
+                    )),
+                ],
+                llm_writer,
+            )
+
+        def _batch3():
+            return _invoke(
+                [
+                    SystemMessage(content=base_system),
+                    HumanMessage(content=(
+                        f"Topic: {query}\n\nVerified Fact Sheet:\n{facts}\n\n"
+                        "Write ONLY these sections:\n\n"
+                        "## Risks and Unknowns\n"
+                        "## What to Verify Next\n"
+                        "## Citations\n"
+                        "For Citations: numbered Markdown link list. "
+                        "ONLY include URLs that appear in the Verified Fact Sheet. "
+                        "Format: [n] [Title](URL)\n"
+                    )),
+                ],
+                llm_writer,
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut2 = pool.submit(_batch2)
+            fut3 = pool.submit(_batch3)
+            batch2 = fut2.result()
+            batch3 = fut3.result()
 
         full_draft = f"{batch1}\n\n---\n\n{batch2}\n\n---\n\n{batch3}"
         print(f"[Writer] All batches done. Draft: {len(full_draft)} chars.")

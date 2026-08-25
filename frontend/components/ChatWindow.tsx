@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, memo, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bot,
@@ -69,6 +69,40 @@ const getMessageTitle = (msg: string) => {
   return firstLine.slice(0, 60);
 };
 
+/* Memoized AI message body — ReactMarkdown is expensive (full AST parse).
+ * Wrapping in memo ensures it only re-renders when msg.content changes,
+ * not on every parent state update (loading stage ticks, scroll, etc.). */
+const MemoizedAiMessage = memo(function AiMessage({
+  content,
+  idx,
+}: {
+  content: string;
+  idx: number;
+}) {
+  return (
+    <div id={`ai-message-${idx}`} className="w-full min-w-0">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        className="scio-markdown"
+        components={{
+          a: ({ href, children, ...props }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              {...props}
+            >
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+});
+
 /* ─────────────────────────────────────────────────── */
 
 export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSidebar }: ChatWindowProps) {
@@ -91,7 +125,10 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
     );
     return () => cancelAnimationFrame(id);
-  }, [session?.messages.length, isLoading, stageIndex]);
+    // stageIndex intentionally excluded — it changes every 1.8s and doesn't
+    // need to trigger a scroll recalculation on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.messages.length, isLoading]);
 
   /* Loading stage cycle */
   useEffect(() => {
@@ -316,26 +353,7 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
                         {isUser || isError ? (
                           <span className="whitespace-pre-wrap">{msg.content}</span>
                         ) : (
-                          <div id={`ai-message-${idx}`} className="w-full min-w-0">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              className="scio-markdown"
-                              components={{
-                                a: ({ href, children, ...props }) => (
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    {...props}
-                                  >
-                                    {children}
-                                  </a>
-                                ),
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
-                          </div>
+                          <MemoizedAiMessage content={msg.content} idx={idx} />
                         )}
                       </div>
 
