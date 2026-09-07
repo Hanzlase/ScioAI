@@ -33,14 +33,11 @@ export default function AppPage() {
     setMobileSidebarOpen(false);
   }, [activeSessionId]);
 
-  const handleRename = (sessionId: string) => {
-    const next = window.prompt("Rename session:", sessions[sessionId]?.title ?? "");
-    if (next === null) return;
-    renameSession(sessionId, next);
+  const handleRename = (sessionId: string, title: string) => {
+    renameSession(sessionId, title);
   };
 
   const handleDelete = (sessionId: string) => {
-    if (!window.confirm("Delete this session?")) return;
     deleteSession(sessionId);
   };
 
@@ -135,8 +132,9 @@ export default function AppPage() {
                 <button
                   onClick={() => setMobileSidebarOpen(false)}
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-charcoal-900 shadow-md"
+                  aria-label="Close navigation sidebar"
                 >
-                  <X size={20} />
+                  <X size={20} aria-hidden="true" />
                 </button>
               </div>
               <Sidebar

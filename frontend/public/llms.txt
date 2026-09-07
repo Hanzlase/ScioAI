@@ -1,0 +1,39 @@
+# ScioAI
+
+> ScioAI is an autonomous research platform that deploys a coordinated team of AI agents — Researcher, Writer, and Critic — to produce citation-grounded research reports in seconds.
+
+## What ScioAI Does
+
+ScioAI accepts a natural-language research query and returns a fully structured Markdown report with citations. The pipeline runs three agents in sequence:
+
+1. **Researcher** – Queries Tavily's real-time web search API to gather the most relevant, up-to-date evidence (8+ sources per query).
+2. **Writer** – Uses a high-performance LLM (Llama 3 70B via Groq) to synthesise evidence into a structured report with an executive summary, detailed findings, analysis, and inline citations.
+3. **Critic** – Runs a second LLM pass to verify all citations, remove unsupported claims, and enforce an objective, neutral tone.
+
+## Key Capabilities
+
+- Real-time web intelligence via Tavily Search API
+- Multi-agent orchestration via LangGraph stateful DAG
+- Citation-grounded, objective research reports
+- Markdown report output with PDF export
+- Persistent multi-session chat workspace (localStorage)
+- Average response time: ~12 seconds
+
+## Tech Stack
+
+- **Frontend**: Next.js 14 (App Router), Tailwind CSS, Framer Motion
+- **Backend**: FastAPI + Uvicorn (Python)
+- **Agent Orchestration**: LangGraph 0.2
+- **LLM**: Groq API (Llama 3.3 70B)
+- **Web Search**: Tavily Search API
+
+## API
+
+- `POST /api/chat` — Submit a research query; returns Markdown report + workflow steps
+- `POST /api/generate-pdf` — Convert a Markdown report to a downloadable PDF
+- `GET /health` — Health check
+
+## Links
+
+- App: https://scioai.up.railway.app
+- API Docs: https://scioai-backend-production.up.railway.app/docs

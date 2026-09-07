@@ -1,0 +1,17 @@
+{
+  "name": "ScioAI – Autonomous Research Platform",
+  "short_name": "ScioAI",
+  "description": "Deploy AI agents to produce citation-grounded research reports in seconds.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a1a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

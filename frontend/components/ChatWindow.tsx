@@ -244,11 +244,12 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
       {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-4 sm:px-6 sm:py-5" style={{ borderColor: "var(--c-100)" }}>
         {onOpenSidebar && (
-          <button 
+          <button
             onClick={onOpenSidebar}
             className="mr-1 rounded-md p-1.5 transition hover:bg-charcoal-50 lg:hidden"
+            aria-label="Open navigation sidebar"
           >
-            <Menu size={22} />
+            <Menu size={22} aria-hidden="true" />
           </button>
         )}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10" style={{ background: "var(--c-900)" }}>
@@ -482,6 +483,7 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
             boxShadow: "0 1px 0 rgba(0,0,0,0.02)",
           }}
         >
+          <label htmlFor="chat-input" className="sr-only">Research query</label>
           <textarea
             ref={textareaRef}
             value={query}
@@ -491,6 +493,8 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
             placeholder="Ask ScioAI to research a topic… (Enter to send)"
             rows={1}
             id="chat-input"
+            aria-label="Research query"
+            aria-describedby="chat-input-hint"
             className="flex-1 resize-none bg-transparent text-base outline-none disabled:opacity-60"
             style={{ color: "var(--c-900)", minHeight: "28px", maxHeight: "200px" }}
           />
@@ -498,17 +502,18 @@ export default function ChatWindow({ sessionId, session, onSendMessage, onOpenSi
             type="submit"
             disabled={!canSend}
             id="chat-send-btn"
+            aria-label={isLoading ? "Sending…" : "Send message"}
             className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl transition disabled:opacity-30"
             style={{ background: "var(--c-900)", color: "#fff" }}
             onMouseEnter={(e) => { if (canSend) e.currentTarget.style.background = "var(--c-800)" }}
             onMouseLeave={(e) => { if (canSend) e.currentTarget.style.background = "var(--c-900)" }}
           >
             {isLoading
-              ? <LoaderCircle className="h-4 w-4 animate-spin" />
-              : <SendHorizontal className="size-[18px]" />}
+              ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+              : <SendHorizontal className="size-[18px]" aria-hidden="true" />}
           </button>
         </div>
-        <p className="mt-3 text-center text-xs font-medium" style={{ color: "var(--c-400)" }}>
+        <p id="chat-input-hint" className="mt-3 text-center text-xs font-medium" style={{ color: "var(--c-400)" }}>
           ScioAI may produce errors · Verify important information
         </p>
       </form>

@@ -5,8 +5,9 @@
 /* ── Design tokens ── */
 :root {
   color-scheme: light;
-  --font-body:    ui-sans-serif, "Inter", system-ui, -apple-system, sans-serif;
-  --font-heading: ui-sans-serif, "Inter", system-ui, -apple-system, sans-serif;
+  /* Uses CSS variable injected by next/font/google */
+  --font-body:    var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* Charcoal scale */
   --c-950: #0d0d0d;

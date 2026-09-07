@@ -71,6 +71,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:3001",
         "https://scioai.up.railway.app",
+        "https://scioai-backend-production.up.railway.app",
     ],
     allow_origin_regex=r"https://.*\.up\.railway\.app",  # Allow all Railway subdomains
     allow_credentials=True,
