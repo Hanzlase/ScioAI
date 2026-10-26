@@ -224,10 +224,10 @@ export default function LandingPageClient() {
               whileHover={{ rotate: 8, scale: 1.05 }}
               transition={{ duration: 0.2 }}
               className="flex h-9 w-9 items-center justify-center rounded-xl shadow-sm ring-1 ring-white/10"
-              style={{ background: "var(--c-900)" }}
+              style={{ background: "var(--c-900)", color: "var(--c-50)" }}
               aria-hidden="true"
             >
-              <Sparkles size={16} className="text-white" />
+              <Sparkles size={16} />
             </motion.div>
             <span className="font-heading text-lg font-extrabold tracking-tight" style={{ color: "var(--c-900)" }}>
               ScioAI
@@ -549,17 +549,26 @@ export default function LandingPageClient() {
               {/* Mock Synthesized Intelligence Content */}
               <div className="p-5 sm:p-6">
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-neutral-100 bg-neutral-50/80 p-4">
-                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                  <div
+                    className="rounded-xl border p-4"
+                    style={{ borderColor: "var(--c-200)", background: "var(--c-50)" }}
+                  >
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--c-500)" }}>
                       Executive Summary & Key Findings
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+                    <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--c-700)" }}>
                       Solid-state battery (SSB) cell-level adoption is shifting from prototype testing to pilot-scale automotive runs. High-silicon anodes and sulfide-based electrolytes represent the leading path to achieving volumetric density exceeding 450 Wh/kg{" "}
-                      <span className="rounded bg-neutral-200 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-neutral-800">
+                      <span
+                        className="rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold"
+                        style={{ background: "var(--c-200)", color: "var(--c-800)" }}
+                      >
                         [1] Nature Energy
                       </span>
                       . Scaling production remains constrained by roll-to-roll electrolyte uniformity and interfacial impedance degradation{" "}
-                      <span className="rounded bg-neutral-200 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-neutral-800">
+                      <span
+                        className="rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold"
+                        style={{ background: "var(--c-200)", color: "var(--c-800)" }}
+                      >
                         [2] BloombergNEF
                       </span>
                       .
@@ -567,18 +576,27 @@ export default function LandingPageClient() {
                   </div>
 
                   {/* Verification & Citation Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-3 text-xs">
-                    <div className="flex items-center gap-2 text-neutral-500">
-                      <span className="font-semibold text-neutral-800">Grounded References:</span>
-                      <span className="rounded border border-neutral-200 px-2 py-0.5 text-neutral-600">
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-3 border-t pt-3 text-xs"
+                    style={{ borderColor: "var(--c-100)" }}
+                  >
+                    <div className="flex items-center gap-2" style={{ color: "var(--c-500)" }}>
+                      <span className="font-semibold" style={{ color: "var(--c-800)" }}>Grounded References:</span>
+                      <span
+                        className="rounded border px-2 py-0.5"
+                        style={{ borderColor: "var(--c-200)", color: "var(--c-600)" }}
+                      >
                         nature.com/articles/energy-ssb
                       </span>
-                      <span className="hidden rounded border border-neutral-200 px-2 py-0.5 text-neutral-600 sm:inline">
+                      <span
+                        className="hidden rounded border px-2 py-0.5 sm:inline"
+                        style={{ borderColor: "var(--c-200)", color: "var(--c-600)" }}
+                      >
                         bnef.com/insights/battery-2025
                       </span>
                     </div>
-                    <div className="inline-flex items-center gap-1 font-medium text-neutral-700">
-                      <CheckCircle2 size={13} />
+                    <div className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--c-700)" }}>
+                      <CheckCircle2 size={13} style={{ color: "var(--c-900)" }} />
                       <span>Zero unsupported claims detected</span>
                     </div>
                   </div>
@@ -644,7 +662,7 @@ export default function LandingPageClient() {
       >
         <div className="mx-auto max-w-6xl">
           <motion.div {...inView(0)} className="mb-16 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--c-400)" }}>
               Coordinated Multi-Agent System
             </p>
             <h2
@@ -747,7 +765,7 @@ export default function LandingPageClient() {
       >
         <div className="mx-auto max-w-6xl">
           <motion.div {...inView(0)} className="mb-16 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--c-400)" }}>
               Platform Features
             </p>
             <h2
@@ -758,7 +776,8 @@ export default function LandingPageClient() {
               Engineered for uncompromised accuracy.
             </h2>
             <p
-              className="mx-auto mt-4 max-w-xl text-base leading-relaxed sm:text-lg text-neutral-500"
+              className="mx-auto mt-4 max-w-xl text-base leading-relaxed sm:text-lg"
+              style={{ color: "var(--c-500)" }}
             >
               Every layer of ScioAI is built to eliminate hallucinations and deliver reliable, audit-ready intelligence.
             </p>
@@ -808,7 +827,7 @@ export default function LandingPageClient() {
       >
         <div className="mx-auto max-w-6xl">
           <motion.div {...inView(0)} className="mb-16 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--c-400)" }}>
               Execution Pipeline
             </p>
             <h2
@@ -869,7 +888,7 @@ export default function LandingPageClient() {
       >
         <div className="mx-auto max-w-6xl text-center">
           <motion.div {...inView(0)} className="mb-10">
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--c-400)" }}>
               Modern Open Infrastructure
             </p>
             <h2
@@ -986,17 +1005,17 @@ export default function LandingPageClient() {
                 </div>
                 <span>ScioAI</span>
               </div>
-              <p className="max-w-xs text-sm text-neutral-500">
+              <p className="max-w-xs text-sm" style={{ color: "var(--c-500)" }}>
                 Autonomous deep research platform powered by LangGraph, FastAPI, and Groq.
               </p>
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-500">
+              <div className="flex items-center gap-2 text-xs font-medium" style={{ color: "var(--c-500)" }}>
                 <span>All Agent Systems Operational</span>
               </div>
             </div>
 
             {/* Footer Navigation */}
             <nav aria-label="Footer navigation">
-              <p className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-3">
+              <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--c-400)" }}>
                 Navigation
               </p>
               <ul className="flex flex-col gap-2 sm:flex-row sm:gap-6">
@@ -1004,7 +1023,8 @@ export default function LandingPageClient() {
                   <li key={l.href}>
                     <Link
                       href={l.href}
-                      className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+                      className="text-sm font-medium transition-colors hover:opacity-100"
+                      style={{ color: "var(--c-600)" }}
                     >
                       {l.label}
                     </Link>
@@ -1019,13 +1039,14 @@ export default function LandingPageClient() {
             className="mt-10 flex flex-col gap-4 border-t pt-6 sm:flex-row sm:items-center sm:justify-between"
             style={{ borderColor: "var(--c-200)" }}
           >
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs" style={{ color: "var(--c-400)" }}>
               &copy; {new Date().getFullYear()} ScioAI Platform. Autonomous Multi-Agent Research.
             </p>
             <div className="flex items-center gap-5">
               <a
                 href="https://github.com"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 transition hover:text-neutral-900"
+                className="inline-flex items-center gap-1.5 text-xs font-medium transition hover:opacity-100"
+                style={{ color: "var(--c-500)" }}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="ScioAI on GitHub (opens in new tab)"
@@ -1033,8 +1054,8 @@ export default function LandingPageClient() {
                 <Github size={15} aria-hidden="true" />
                 <span>GitHub Repository</span>
               </a>
-              <span className="text-xs text-neutral-300">•</span>
-              <p className="text-xs text-neutral-400">
+              <span className="text-xs" style={{ color: "var(--c-300)" }}>•</span>
+              <p className="text-xs" style={{ color: "var(--c-400)" }}>
                 LangGraph · Groq · FastAPI · Next.js
               </p>
             </div>
