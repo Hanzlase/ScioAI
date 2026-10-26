@@ -229,17 +229,9 @@ export default function LandingPageClient() {
             >
               <Sparkles size={16} className="text-white" />
             </motion.div>
-            <div className="flex items-center gap-2">
-              <span className="font-heading text-lg font-extrabold tracking-tight" style={{ color: "var(--c-900)" }}>
-                ScioAI
-              </span>
-              <span
-                className="hidden rounded-full border px-2 py-0.5 text-[11px] font-semibold sm:inline-block"
-                style={{ borderColor: "var(--c-200)", background: "var(--c-50)", color: "var(--c-600)" }}
-              >
-                v1.0
-              </span>
-            </div>
+            <span className="font-heading text-lg font-extrabold tracking-tight" style={{ color: "var(--c-900)" }}>
+              ScioAI
+            </span>
           </Link>
 
           {/* Desktop links */}
@@ -268,7 +260,7 @@ export default function LandingPageClient() {
                 title="Toggle Light/Dark Theme"
               >
                 {theme === "dark" ? (
-                  <Sun size={16} className="text-amber-400" />
+                  <Sun size={16} />
                 ) : (
                   <Moon size={16} />
                 )}
@@ -343,7 +335,7 @@ export default function LandingPageClient() {
                       <span className="flex items-center gap-1.5 text-xs font-semibold">
                         {theme === "dark" ? (
                           <>
-                            <Sun size={14} className="text-amber-400" />
+                            <Sun size={14} />
                             <span>Light Mode</span>
                           </>
                         ) : (
@@ -413,11 +405,8 @@ export default function LandingPageClient() {
             className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg"
             style={{ color: "var(--c-500)" }}
           >
-            ScioAI deploys a coordinated triad of specialized AI agents —{" "}
-            <strong className="font-semibold text-neutral-800">Researcher</strong>,{" "}
-            <strong className="font-semibold text-neutral-800">Writer</strong>, and{" "}
-            <strong className="font-semibold text-neutral-800">Critic</strong> — to investigate, synthesize, and verify
-            citation-grounded reports in seconds.
+            A coordinated pipeline of three AI agents works in sequence to investigate any topic,
+            synthesize structured findings, and verify every claim against live primary sources.
           </motion.p>
 
           {/* Action CTAs */}

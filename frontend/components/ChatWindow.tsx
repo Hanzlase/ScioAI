@@ -457,7 +457,7 @@ export default function ChatWindow({
                 className="font-mono text-[11px] font-medium"
                 style={{ color: "var(--c-600)" }}
               >
-                Researcher ➔ Writer ➔ Critic
+                Researcher / Writer / Critic
               </span>
             </div>
           </div>
@@ -558,7 +558,7 @@ export default function ChatWindow({
                       </span>
                       <Icon
                         size={13}
-                        className="transition-colors group-hover:text-emerald-500"
+                        className="transition-colors"
                         style={{ color: "var(--c-400)" }}
                       />
                     </div>
@@ -592,15 +592,15 @@ export default function ChatWindow({
               style={{ color: "var(--c-500)" }}
             >
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-emerald-500" />
+                <CheckCircle2 size={13} style={{ color: "var(--c-600)" }} />
                 Live Tavily Web Retrieval
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-emerald-500" />
+                <CheckCircle2 size={13} style={{ color: "var(--c-600)" }} />
                 Zero-Hallucination Audit
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-emerald-500" />
+                <CheckCircle2 size={13} style={{ color: "var(--c-600)" }} />
                 One-Click PDF Export
               </span>
             </motion.div>
@@ -757,7 +757,7 @@ export default function ChatWindow({
                                 aria-label="Toggle verified sources"
                               >
                                 <div className="flex items-center gap-1.5">
-                                  <Bookmark size={12} className="text-emerald-500" />
+                                  <Bookmark size={12} style={{ color: "var(--c-700)" }} />
                                   <span>Verified Primary Sources ({parsed.citations.length})</span>
                                 </div>
                                 {isSourcesOpen ? (
@@ -838,7 +838,7 @@ export default function ChatWindow({
                                       color: "var(--c-700)",
                                     }}
                                   >
-                                    <CheckCircle2 size={10} className="text-emerald-500" />
+                                    <CheckCircle2 size={10} style={{ color: "var(--c-600)" }} />
                                     <span>{agentStepLabels[step] ?? step}</span>
                                   </span>
                                 ))
@@ -851,7 +851,7 @@ export default function ChatWindow({
                                     color: "var(--c-700)",
                                   }}
                                 >
-                                  <CheckCircle2 size={10} className="text-emerald-500" />
+                                  <CheckCircle2 size={10} style={{ color: "var(--c-600)" }} />
                                   <span>Citation Grounded</span>
                                 </span>
                               )}
@@ -871,7 +871,7 @@ export default function ChatWindow({
                               >
                                 {copiedIndex === idx ? (
                                   <>
-                                    <Check size={11} className="text-emerald-500" />
+                                    <Check size={11} style={{ color: "var(--c-700)" }} />
                                     <span>Copied</span>
                                   </>
                                 ) : (
@@ -1009,7 +1009,7 @@ export default function ChatWindow({
                               }}
                             >
                               {done ? (
-                                <Check size={12} className="text-emerald-500" />
+                                <Check size={12} style={{ color: "var(--c-600)" }} />
                               ) : (
                                 <Icon
                                   size={13}
@@ -1064,7 +1064,12 @@ export default function ChatWindow({
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-800 dark:bg-red-950/40 dark:border-red-900 dark:text-red-300"
+                className="flex items-center gap-2 rounded-xl border p-3 text-xs font-semibold"
+              style={{
+                borderColor: "var(--c-200)",
+                background: "var(--c-100)",
+                color: "var(--c-800)",
+              }}
               >
                 <RotateCcw size={13} />
                 <span>{pdfError}</span>
@@ -1086,7 +1091,7 @@ export default function ChatWindow({
         }}
       >
         <div
-          className="relative rounded-2xl border transition-all duration-150 focus-within:ring-2 focus-within:ring-emerald-500/20"
+          className="relative rounded-2xl border transition-all duration-150 focus-within:ring-2 focus-within:ring-neutral-900/10"
           style={{
             borderColor: "var(--c-200)",
             background: "var(--c-50)",
@@ -1103,7 +1108,7 @@ export default function ChatWindow({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
-              placeholder="Ask ScioAI to research a topic… (Enter to send, Shift+Enter for newline)"
+              placeholder="Enter a research question and press Enter..."
               rows={2}
               id="chat-input"
               aria-label="Research query"
@@ -1144,7 +1149,7 @@ export default function ChatWindow({
                   color: "var(--c-600)",
                 }}
               >
-                <Search size={11} className="text-emerald-500" />
+                <Search size={11} style={{ color: "var(--c-500)" }} />
                 Live Tavily
               </span>
               <span

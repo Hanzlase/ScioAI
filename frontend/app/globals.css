@@ -26,8 +26,8 @@
   --card-border:   #e5e5e5;
   --nav-bg:        rgba(255, 255, 255, 0.85);
   --nav-bg-scroll: rgba(255, 255, 255, 0.94);
-  --ai-accent:     #10b981;
-  --ai-glow:       rgba(16, 185, 129, 0.15);
+  --ai-accent:     #1a1a1a;
+  --ai-glow:       rgba(26, 26, 26, 0.12);
   --code-bg:       #0d0d0d;
   --input-bg:      #ffffff;
 }
@@ -35,27 +35,27 @@
 html.dark, [data-theme="dark"] {
   color-scheme: dark;
 
-  /* Deep Night / OLED Charcoal scale (Dark Mode) */
+  /* Clean dark charcoal scale */
   --c-950: #ffffff;
-  --c-900: #f9fafb;
-  --c-800: #f3f4f6;
-  --c-700: #e5e7eb;
-  --c-600: #d1d5db;
-  --c-500: #9ca3af;
-  --c-400: #6b7280;
-  --c-300: #374151;
-  --c-200: #1f2937;
-  --c-100: #111827;
-  --c-50:  #090d16;
+  --c-900: #f2f2f2;
+  --c-800: #e0e0e0;
+  --c-700: #c8c8c8;
+  --c-600: #a8a8a8;
+  --c-500: #858585;
+  --c-400: #5e5e5e;
+  --c-300: #3a3a3a;
+  --c-200: #272727;
+  --c-100: #1c1c1c;
+  --c-50:  #111111;
 
-  --card-bg:       #0f1623;
-  --card-border:   #1f293d;
-  --nav-bg:        rgba(9, 13, 22, 0.82);
-  --nav-bg-scroll: rgba(9, 13, 22, 0.94);
-  --ai-accent:     #34d399;
-  --ai-glow:       rgba(52, 211, 153, 0.22);
-  --code-bg:       #05080f;
-  --input-bg:      #0e1421;
+  --card-bg:       #161616;
+  --card-border:   #2a2a2a;
+  --nav-bg:        rgba(17, 17, 17, 0.82);
+  --nav-bg-scroll: rgba(17, 17, 17, 0.96);
+  --ai-accent:     #d4d4d4;
+  --ai-glow:       rgba(212, 212, 212, 0.12);
+  --code-bg:       #0a0a0a;
+  --input-bg:      #161616;
 }
 
 /* ── Reset & Base ── */
@@ -219,7 +219,7 @@ h1, h2, h3, h4, h5, h6 {
   padding:          0.7rem 1rem;
 }
 .input-base::placeholder { color: var(--c-400); }
-.input-base:focus { border-color: var(--c-900); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15); }
+.input-base:focus { border-color: var(--c-900); box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08); }
 
 /* ── Badges ── */
 .badge {
@@ -253,7 +253,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
 }
 .step-pill.done   { border-color: var(--c-300); background-color: var(--c-100); color: var(--c-700); }
-.step-pill.active { border-color: var(--ai-accent); background-color: var(--c-900); color: #fff; box-shadow: 0 0 10px var(--ai-glow); }
+.step-pill.active { border-color: var(--c-900); background-color: var(--c-900); color: #fff; }
 .step-pill.idle   { border-color: var(--c-200); background-color: var(--card-bg); color: var(--c-400); }
 
 /* ── Loading dots ── */

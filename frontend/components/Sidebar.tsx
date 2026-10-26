@@ -709,7 +709,7 @@ export default function Sidebar({
             >
               {theme === "dark" ? (
                 <>
-                  <Sun size={12} className="text-amber-400" />
+                  <Sun size={12} />
                   <span>Light</span>
                 </>
               ) : (
