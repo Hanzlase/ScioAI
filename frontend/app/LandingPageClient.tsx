@@ -303,7 +303,7 @@ export default function LandingPageClient() {
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.24, ease: EASE }}
               className="overflow-hidden border-t md:hidden"
-              style={{ borderColor: "var(--c-200)", background: "#fff" }}
+              style={{ borderColor: "var(--c-200)", background: "var(--card-bg)" }}
             >
               <nav
                 className="flex flex-col gap-1.5 px-5 py-5"
@@ -377,13 +377,13 @@ export default function LandingPageClient() {
               className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium shadow-2xs"
               style={{
                 borderColor: "var(--c-200)",
-                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                backgroundColor: "var(--card-bg)",
                 color: "var(--c-700)",
               }}
             >
               <span>Autonomous Multi-Agent Intelligence Engine</span>
               <span className="text-neutral-300">|</span>
-              <span className="font-semibold text-neutral-900">LangGraph Powered</span>
+              <span className="font-semibold" style={{ color: "var(--c-900)" }}>LangGraph Powered</span>
             </div>
           </motion.div>
 
@@ -459,8 +459,8 @@ export default function LandingPageClient() {
             className="relative mx-auto mt-14 max-w-4xl text-left"
           >
             <div
-              className="relative overflow-hidden rounded-2xl border bg-white shadow-2xl transition-all"
-              style={{ borderColor: "var(--c-200)" }}
+              className="relative overflow-hidden rounded-2xl border shadow-2xl transition-all"
+              style={{ borderColor: "var(--c-200)", background: "var(--card-bg)" }}
             >
               {/* Mock Window Top Bar */}
               <div
@@ -471,12 +471,15 @@ export default function LandingPageClient() {
                   <div className="h-3 w-3 rounded-full bg-neutral-300" />
                   <div className="h-3 w-3 rounded-full bg-neutral-300" />
                   <div className="h-3 w-3 rounded-full bg-neutral-300" />
-                  <span className="ml-2 font-mono text-xs text-neutral-500">
+                  <span className="ml-2 font-mono text-xs" style={{ color: "var(--c-400)" }}>
                     scioai.workspace / session-842
                   </span>
                 </div>
                 <div className="hidden items-center gap-2 sm:flex">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-white px-2.5 py-0.5 text-xs font-medium text-neutral-600 shadow-2xs">
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium shadow-2xs"
+                    style={{ borderColor: "var(--c-200)", background: "var(--c-100)", color: "var(--c-600)" }}
+                  >
                     3 Agents Synchronized
                   </span>
                 </div>
@@ -487,23 +490,28 @@ export default function LandingPageClient() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3">
                     <div
-                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white"
-                      style={{ background: "var(--c-900)" }}
+                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-2xs"
+                      style={{ background: "var(--c-900)", color: "var(--c-50)" }}
                     >
                       <Search size={14} />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--c-400)" }}>
                         Active Inquest
                       </p>
-                      <h2 className="font-heading text-base font-bold text-neutral-900 sm:text-lg">
+                      <h2 className="font-heading text-base font-bold sm:text-lg" style={{ color: "var(--c-900)" }}>
                         Solid-state battery commercialization bottlenecks & timelines (2025–2030)
                       </h2>
                     </div>
                   </div>
                   <Link
                     href="/dashboard"
-                    className="inline-flex items-center gap-1.5 self-start rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-700 transition hover:bg-neutral-100 sm:self-center"
+                    className="inline-flex items-center gap-1.5 self-start rounded-lg border px-3 py-1.5 text-xs font-medium transition sm:self-center"
+                    style={{
+                      borderColor: "var(--c-200)",
+                      background: "var(--c-50)",
+                      color: "var(--c-700)",
+                    }}
                   >
                     <span>Inspect live in app</span>
                     <ArrowRight size={13} />
@@ -512,18 +520,27 @@ export default function LandingPageClient() {
 
                 {/* Agent Execution Flow Pipeline Pill Bar */}
                 <div className="mt-4 flex flex-wrap items-center gap-2 pt-1">
-                  <div className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700">
-                    <CheckCircle2 size={13} className="text-neutral-900" />
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium"
+                    style={{ borderColor: "var(--c-200)", background: "var(--c-50)", color: "var(--c-700)" }}
+                  >
+                    <CheckCircle2 size={13} style={{ color: "var(--c-900)" }} />
                     <span>Researcher: 8 sources parsed</span>
                   </div>
-                  <span className="text-xs text-neutral-300">→</span>
-                  <div className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700">
-                    <CheckCircle2 size={13} className="text-neutral-900" />
+                  <span className="text-xs" style={{ color: "var(--c-400)" }}>→</span>
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium"
+                    style={{ borderColor: "var(--c-200)", background: "var(--c-50)", color: "var(--c-700)" }}
+                  >
+                    <CheckCircle2 size={13} style={{ color: "var(--c-900)" }} />
                     <span>Writer: Synthesized 4 sections</span>
                   </div>
-                  <span className="text-xs text-neutral-300">→</span>
-                  <div className="inline-flex items-center gap-1.5 rounded-md border border-neutral-900 bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white shadow-xs">
-                    <Sparkles size={12} className="text-neutral-200" />
+                  <span className="text-xs" style={{ color: "var(--c-400)" }}>→</span>
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium shadow-xs"
+                    style={{ borderColor: "var(--c-900)", background: "var(--c-900)", color: "var(--c-50)" }}
+                  >
+                    <Sparkles size={12} style={{ color: "var(--c-50)" }} />
                     <span>Critic: Citations Verified</span>
                   </div>
                 </div>
@@ -591,13 +608,13 @@ export default function LandingPageClient() {
                 key={label}
                 variants={fadeItem}
                 whileHover={{ y: -3, transition: { duration: 0.18 } }}
-                className="hover-lift flex flex-col justify-between rounded-2xl border bg-white p-5 text-left shadow-xs"
-                style={{ borderColor: "var(--c-200)" }}
+                className="hover-lift card flex flex-col justify-between p-5 text-left shadow-xs"
+                style={{ borderColor: "var(--c-200)", background: "var(--card-bg)" }}
               >
                 <div>
                   <div
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border text-neutral-700"
-                    style={{ borderColor: "var(--c-200)", background: "var(--c-50)" }}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border"
+                    style={{ borderColor: "var(--c-200)", background: "var(--c-50)", color: "var(--c-800)" }}
                   >
                     <Icon size={18} aria-hidden="true" />
                   </div>
@@ -607,9 +624,9 @@ export default function LandingPageClient() {
                   >
                     {value}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-neutral-800">{label}</p>
+                  <p className="mt-1 text-sm font-semibold" style={{ color: "var(--c-800)" }}>{label}</p>
                 </div>
-                <p className="mt-3 border-t pt-2.5 text-xs text-neutral-400" style={{ borderColor: "var(--c-100)" }}>
+                <p className="mt-3 border-t pt-2.5 text-xs" style={{ borderColor: "var(--c-100)", color: "var(--c-500)" }}>
                   {detail}
                 </p>
               </motion.div>
@@ -657,18 +674,19 @@ export default function LandingPageClient() {
                   {...inView(i * 0.1)}
                   whileHover={{ y: -6, transition: { duration: 0.2 } }}
                   className="hover-lift hover-glow card relative flex flex-col justify-between overflow-hidden p-7"
+                  style={{ borderColor: "var(--c-200)", background: "var(--card-bg)" }}
                 >
                   {/* Card Header */}
                   <div>
                     <div className="flex items-center justify-between">
                       <div
-                        className="flex h-12 w-12 items-center justify-center rounded-2xl border text-neutral-900 shadow-2xs"
-                        style={{ borderColor: "var(--c-200)", background: "var(--c-50)" }}
+                        className="flex h-12 w-12 items-center justify-center rounded-2xl border shadow-2xs"
+                        style={{ borderColor: "var(--c-200)", background: "var(--c-50)", color: "var(--c-900)" }}
                         aria-hidden="true"
                       >
                         <Icon size={24} />
                       </div>
-                      <span className="font-mono text-sm font-bold text-neutral-400">
+                      <span className="font-mono text-sm font-bold" style={{ color: "var(--c-400)" }}>
                         {step}
                       </span>
                     </div>
@@ -686,20 +704,20 @@ export default function LandingPageClient() {
                       >
                         {title}
                       </h3>
-                      <p className="text-xs font-medium text-neutral-400">{subtitle}</p>
-                      <p className="mt-3 text-sm leading-relaxed text-neutral-600">
+                      <p className="text-xs font-medium" style={{ color: "var(--c-500)" }}>{subtitle}</p>
+                      <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--c-600)" }}>
                         {desc}
                       </p>
                     </div>
 
                     {/* Capabilities List */}
                     <div className="mt-5 space-y-2 border-t pt-4" style={{ borderColor: "var(--c-100)" }}>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                      <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--c-400)" }}>
                         Core Capabilities
                       </p>
                       {capabilities.map((c) => (
-                        <div key={c} className="flex items-center gap-2 text-xs text-neutral-700">
-                          <CheckCircle2 size={13} className="shrink-0 text-neutral-900" />
+                        <div key={c} className="flex items-center gap-2 text-xs" style={{ color: "var(--c-700)" }}>
+                          <CheckCircle2 size={13} className="shrink-0" style={{ color: "var(--c-900)" }} />
                           <span>{c}</span>
                         </div>
                       ))}
@@ -711,7 +729,7 @@ export default function LandingPageClient() {
                     className="mt-6 rounded-xl border p-2.5"
                     style={{ borderColor: "var(--c-200)", background: "var(--c-50)" }}
                   >
-                    <p className="font-mono text-[11px] text-neutral-600 truncate">{statusSimulation}</p>
+                    <p className="font-mono text-[11px] truncate" style={{ color: "var(--c-600)" }}>{statusSimulation}</p>
                   </div>
                 </motion.article>
               ))}
@@ -758,19 +776,20 @@ export default function LandingPageClient() {
                 key={title}
                 variants={fadeItem}
                 whileHover={{ y: -4, transition: { duration: 0.18 } }}
-                className="hover-lift card flex flex-col justify-between p-7 bg-white"
+                className="hover-lift card flex flex-col justify-between p-7"
+                style={{ borderColor: "var(--c-200)", background: "var(--card-bg)" }}
               >
                 <div>
                   <div
-                    className="flex h-11 w-11 items-center justify-center rounded-xl border text-neutral-800"
-                    style={{ borderColor: "var(--c-200)", background: "var(--c-50)" }}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl border"
+                    style={{ borderColor: "var(--c-200)", background: "var(--c-50)", color: "var(--c-800)" }}
                   >
                     <Icon size={20} />
                   </div>
-                  <h3 className="font-heading mt-5 text-base font-bold text-neutral-900">
+                  <h3 className="font-heading mt-5 text-base font-bold" style={{ color: "var(--c-900)" }}>
                     {title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                  <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--c-600)" }}>
                     {desc}
                   </p>
                 </div>
@@ -814,23 +833,24 @@ export default function LandingPageClient() {
                 variants={fadeItem}
                 whileHover={{ y: -5, transition: { duration: 0.18 } }}
                 className="hover-lift card relative flex flex-col justify-between p-6"
+                style={{ borderColor: "var(--c-200)", background: "var(--card-bg)" }}
               >
                 <div>
                   <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: "var(--c-100)" }}>
-                    <span className="font-mono text-xs font-bold uppercase text-neutral-400">
+                    <span className="font-mono text-xs font-bold uppercase" style={{ color: "var(--c-400)" }}>
                       Phase {n} · {phase}
                     </span>
                     <div
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
-                      style={{ background: "var(--c-900)" }}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg shadow-2xs"
+                      style={{ background: "var(--c-900)", color: "var(--c-50)" }}
                     >
                       <Icon size={15} />
                     </div>
                   </div>
-                  <h3 className="font-heading mt-4 text-base font-bold text-neutral-900">
+                  <h3 className="font-heading mt-4 text-base font-bold" style={{ color: "var(--c-900)" }}>
                     {title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                  <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--c-600)" }}>
                     {desc}
                   </p>
                 </div>
@@ -873,13 +893,13 @@ export default function LandingPageClient() {
                 key={name}
                 variants={fadeItem}
                 whileHover={{ y: -2, transition: { duration: 0.16 } }}
-                className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 shadow-2xs"
-                style={{ borderColor: "var(--c-200)" }}
+                className="flex items-center gap-2 rounded-xl border px-4 py-2.5 shadow-2xs"
+                style={{ borderColor: "var(--c-200)", background: "var(--card-bg)" }}
               >
-                <Cpu size={15} className="text-neutral-500" />
-                <span className="text-sm font-bold text-neutral-900">{name}</span>
-                <span className="text-xs text-neutral-300">•</span>
-                <span className="text-xs text-neutral-500">{role}</span>
+                <Cpu size={15} style={{ color: "var(--c-500)" }} />
+                <span className="text-sm font-bold" style={{ color: "var(--c-900)" }}>{name}</span>
+                <span className="text-xs" style={{ color: "var(--c-300)" }}>•</span>
+                <span className="text-xs" style={{ color: "var(--c-500)" }}>{role}</span>
               </motion.div>
             ))}
           </motion.div>
@@ -894,8 +914,8 @@ export default function LandingPageClient() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.55, ease: EASE }}
-            className="relative overflow-hidden rounded-3xl p-10 text-center sm:p-16 shadow-xl"
-            style={{ background: "var(--c-950)", color: "#fff" }}
+            className="relative overflow-hidden rounded-3xl p-10 text-center sm:p-16 shadow-xl border"
+            style={{ background: "#0d0d0d", borderColor: "rgba(255,255,255,0.12)", color: "#ffffff" }}
           >
             {/* Subtle ambient lighting */}
             <div
@@ -957,10 +977,10 @@ export default function LandingPageClient() {
           <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
             {/* Brand */}
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 font-bold text-neutral-900">
+              <div className="flex items-center gap-2 font-bold" style={{ color: "var(--c-900)" }}>
                 <div
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-white"
-                  style={{ background: "var(--c-900)" }}
+                  className="flex h-6 w-6 items-center justify-center rounded-lg shadow-2xs"
+                  style={{ background: "var(--c-900)", color: "var(--c-50)" }}
                 >
                   <Sparkles size={12} />
                 </div>

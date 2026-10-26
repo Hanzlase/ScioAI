@@ -103,9 +103,9 @@ export default function AppPage() {
         <div className="flex flex-col items-center gap-3">
           <div
             className="flex h-12 w-12 items-center justify-center rounded-2xl shadow-md ring-1 ring-white/20"
-            style={{ background: "var(--c-900)" }}
+            style={{ background: "var(--c-900)", color: "var(--c-50)" }}
           >
-            <Sparkles size={22} className="animate-pulse text-white" />
+            <Sparkles size={22} className="animate-pulse" />
           </div>
           <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
             Initializing ScioAI Workspace…
@@ -205,8 +205,8 @@ export default function AppPage() {
           />
         ) : (
           <div
-            className="flex h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-xs"
-            style={{ borderColor: "var(--c-200)" }}
+            className="flex h-full flex-col overflow-hidden rounded-2xl border shadow-xs"
+            style={{ borderColor: "var(--c-200)", background: "var(--card-bg)" }}
           >
             {/* Mobile Header for Empty State */}
             <div
@@ -222,12 +222,12 @@ export default function AppPage() {
               </button>
               <div className="flex items-center gap-2">
                 <div
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-white"
-                  style={{ background: "var(--c-900)" }}
+                  className="flex h-6 w-6 items-center justify-center rounded-lg shadow-2xs"
+                  style={{ background: "var(--c-900)", color: "var(--c-50)" }}
                 >
                   <Sparkles size={12} />
                 </div>
-                <span className="font-heading text-sm font-bold text-neutral-900">
+                <span className="font-heading text-sm font-bold" style={{ color: "var(--c-900)" }}>
                   ScioAI
                 </span>
               </div>
@@ -241,8 +241,8 @@ export default function AppPage() {
                 className="max-w-md"
               >
                 <div
-                  className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-md ring-1 ring-white/20"
-                  style={{ background: "var(--c-900)" }}
+                  className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl shadow-md ring-1 ring-white/20"
+                  style={{ background: "var(--c-900)", color: "var(--c-50)" }}
                 >
                   <Sparkles size={24} />
                 </div>

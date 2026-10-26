@@ -436,8 +436,8 @@ export default function ChatWindow({
           )}
 
           <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-2xs"
-            style={{ background: "var(--c-900)" }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-2xs"
+            style={{ background: "var(--c-900)", color: "var(--c-50)" }}
           >
             <Sparkles size={16} />
           </div>
@@ -495,8 +495,8 @@ export default function ChatWindow({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.25 }}
-              className="relative mb-3 flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-xs ring-1 ring-white/10"
-              style={{ background: "var(--c-900)" }}
+              className="relative mb-3 flex h-11 w-11 items-center justify-center rounded-xl shadow-xs ring-1 ring-white/10"
+              style={{ background: "var(--c-900)", color: "var(--c-50)" }}
             >
               <Sparkles size={20} />
             </motion.div>
@@ -632,7 +632,7 @@ export default function ChatWindow({
                       style={{
                         borderColor: isUser ? "transparent" : "var(--c-200)",
                         background: isUser ? "var(--c-900)" : "var(--card-bg)",
-                        color: isUser ? "#fff" : "var(--c-900)",
+                        color: isUser ? "var(--c-50)" : "var(--c-900)",
                       }}
                     >
                       {isUser ? <User size={13} /> : <Bot size={13} />}
@@ -647,8 +647,8 @@ export default function ChatWindow({
                       {isUser ? (
                         /* User Query Bubble */
                         <div
-                          className="rounded-xl rounded-tr-xs px-3.5 py-2 text-xs sm:text-sm font-medium leading-relaxed text-white shadow-xs sm:px-4 sm:py-2.5"
-                          style={{ background: "var(--c-900)" }}
+                          className="rounded-xl rounded-tr-xs px-3.5 py-2 text-xs sm:text-sm font-medium leading-relaxed shadow-xs sm:px-4 sm:py-2.5"
+                          style={{ background: "var(--c-900)", color: "var(--c-50)" }}
                         >
                           <span className="whitespace-pre-wrap">{msg.content}</span>
                         </div>
@@ -885,8 +885,8 @@ export default function ChatWindow({
                               <button
                                 onClick={() => handleDownloadPdf(msg.content, idx)}
                                 disabled={dlIndex === idx}
-                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-xs transition disabled:opacity-50"
-                                style={{ background: "var(--c-900)" }}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold shadow-xs transition disabled:opacity-50"
+                                style={{ background: "var(--c-900)", color: "var(--c-50)" }}
                                 aria-label="Download research report as PDF"
                               >
                                 {dlIndex === idx ? (
@@ -988,7 +988,7 @@ export default function ChatWindow({
                               : done
                               ? "var(--c-100)"
                               : "var(--card-bg)",
-                            color: active ? "#fff" : "var(--c-800)",
+                            color: active ? "var(--c-50)" : "var(--c-800)",
                             opacity: !active && !done ? 0.6 : 1,
                           }}
                         >
@@ -997,12 +997,12 @@ export default function ChatWindow({
                               className={`flex h-7 w-7 items-center justify-center rounded-lg`}
                               style={{
                                 background: active
-                                  ? "rgba(255,255,255,0.15)"
+                                  ? "rgba(128,128,128,0.25)"
                                   : done
                                   ? "var(--card-bg)"
                                   : "var(--c-100)",
                                 color: active
-                                  ? "#fff"
+                                  ? "var(--c-50)"
                                   : done
                                   ? "var(--c-900)"
                                   : "var(--c-400)",
@@ -1187,8 +1187,8 @@ export default function ChatWindow({
                 aria-label={
                   isLoading ? "Generating research…" : "Submit research inquiry"
                 }
-                className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 shrink-0 items-center justify-center rounded-xl text-white shadow-xs transition disabled:opacity-30 active:scale-95"
-                style={{ background: "var(--c-900)" }}
+                className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 shrink-0 items-center justify-center rounded-xl shadow-xs transition disabled:opacity-30 active:scale-95"
+                style={{ background: "var(--c-900)", color: "var(--c-50)" }}
               >
                 {isLoading ? (
                   <LoaderCircle

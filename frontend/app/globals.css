@@ -35,26 +35,26 @@
 html.dark, [data-theme="dark"] {
   color-scheme: dark;
 
-  /* Clean dark charcoal scale */
+  /* Clean dark charcoal scale with optimal contrast ratios */
   --c-950: #ffffff;
   --c-900: #f2f2f2;
   --c-800: #e0e0e0;
-  --c-700: #c8c8c8;
-  --c-600: #a8a8a8;
-  --c-500: #858585;
-  --c-400: #5e5e5e;
-  --c-300: #3a3a3a;
-  --c-200: #272727;
+  --c-700: #cccccc;
+  --c-600: #b3b3b3;
+  --c-500: #949494;
+  --c-400: #787878;
+  --c-300: #3e3e3e;
+  --c-200: #282828;
   --c-100: #1c1c1c;
   --c-50:  #111111;
 
   --card-bg:       #161616;
-  --card-border:   #2a2a2a;
+  --card-border:   #282828;
   --nav-bg:        rgba(17, 17, 17, 0.82);
   --nav-bg-scroll: rgba(17, 17, 17, 0.96);
   --ai-accent:     #d4d4d4;
   --ai-glow:       rgba(212, 212, 212, 0.12);
-  --code-bg:       #0a0a0a;
+  --code-bg:       #0d0d0d;
   --input-bg:      #161616;
 }
 
@@ -179,6 +179,13 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--nav-bg-scroll);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.12);
   border-color: var(--c-200) !important;
+}
+
+/* ── Card primitive ── */
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--c-200);
+  border-radius: 1rem;
 }
 
 /* ──────────────────────────────────────────────────────
@@ -402,17 +409,17 @@ h1, h2, h3, h4, h5, h6 {
 .scio-markdown pre {
   overflow-x: auto;
   border-radius: 10px;
-  background: var(--c-950);
+  background: var(--code-bg);
   padding: 1rem 1.25rem;
   margin: 1.1rem 0;
-  border: 1px solid var(--c-800);
+  border: 1px solid var(--c-200);
   box-shadow: 0 4px 14px rgba(0,0,0,0.06);
 }
 .scio-markdown pre code {
   background: transparent;
   border: none;
   padding: 0;
-  color: var(--c-100);
+  color: #e5e5e5;
   font-size: 0.875em;
 }
 
@@ -483,8 +490,50 @@ h1, h2, h3, h4, h5, h6 {
 }
 .scio-markdown a:hover {
   background-color: var(--c-900);
-  color: #fff;
+  color: var(--c-50);
   border-color: var(--c-900);
   box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK MODE: Remap Tailwind hardcoded neutral classes to CSS variables.
+   The design token scale inverts in dark mode (--c-900 = light text, --c-50 = dark bg).
+   Tailwind utilities like text-neutral-900 are unaware of this, so we remap them here.
+   html.dark has higher specificity than single-class Tailwind utilities → always wins.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Text */
+html.dark .text-neutral-950, [data-theme="dark"] .text-neutral-950 { color: var(--c-950); }
+html.dark .text-neutral-900, [data-theme="dark"] .text-neutral-900 { color: var(--c-900); }
+html.dark .text-neutral-800, [data-theme="dark"] .text-neutral-800 { color: var(--c-800); }
+html.dark .text-neutral-700, [data-theme="dark"] .text-neutral-700 { color: var(--c-700); }
+html.dark .text-neutral-600, [data-theme="dark"] .text-neutral-600 { color: var(--c-600); }
+html.dark .text-neutral-500, [data-theme="dark"] .text-neutral-500 { color: var(--c-500); }
+html.dark .text-neutral-400, [data-theme="dark"] .text-neutral-400 { color: var(--c-400); }
+html.dark .text-neutral-300, [data-theme="dark"] .text-neutral-300 { color: var(--c-300); }
+html.dark .text-neutral-200, [data-theme="dark"] .text-neutral-200 { color: var(--c-200); }
+html.dark .text-neutral-100, [data-theme="dark"] .text-neutral-100 { color: var(--c-100); }
+
+/* Backgrounds — map light neutral backgrounds to theme card and surface variables */
+html.dark .bg-white,       [data-theme="dark"] .bg-white       { background-color: var(--card-bg); }
+html.dark .bg-neutral-50,  [data-theme="dark"] .bg-neutral-50  { background-color: var(--c-50);    }
+html.dark .bg-neutral-100, [data-theme="dark"] .bg-neutral-100 { background-color: var(--c-100);   }
+html.dark .bg-neutral-200, [data-theme="dark"] .bg-neutral-200 { background-color: var(--c-200);   }
+
+/* Borders */
+html.dark .border-neutral-50,  [data-theme="dark"] .border-neutral-50  { border-color: var(--c-50);  }
+html.dark .border-neutral-100, [data-theme="dark"] .border-neutral-100 { border-color: var(--c-100); }
+html.dark .border-neutral-200, [data-theme="dark"] .border-neutral-200 { border-color: var(--c-200); }
+html.dark .border-neutral-300, [data-theme="dark"] .border-neutral-300 { border-color: var(--c-300); }
+
+/* Hover state utilities used in nav links and interactive elements */
+html.dark .hover\:bg-neutral-100:hover,  [data-theme="dark"] .hover\:bg-neutral-100:hover  { background-color: var(--c-100); }
+html.dark .hover\:bg-neutral-50:hover,   [data-theme="dark"] .hover\:bg-neutral-50:hover   { background-color: var(--c-50);  }
+html.dark .hover\:text-neutral-900:hover,[data-theme="dark"] .hover\:text-neutral-900:hover { color: var(--c-900); }
+
+/* Shadows: boost opacity in dark mode so they're visible against dark surfaces */
+html.dark .shadow-xs  { box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+html.dark .shadow-sm  { box-shadow: 0 1px 3px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4); }
+html.dark .shadow-md  { box-shadow: 0 4px 8px rgba(0,0,0,0.6); }
+html.dark .shadow-xl  { box-shadow: 0 16px 32px rgba(0,0,0,0.7); }
+html.dark .shadow-2xl { box-shadow: 0 24px 48px rgba(0,0,0,0.7); }

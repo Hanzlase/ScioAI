@@ -85,8 +85,8 @@ function RenameInput({
           e.preventDefault();
           save();
         }}
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white transition"
-        style={{ background: "var(--c-900)" }}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition"
+        style={{ background: "var(--c-900)", color: "var(--c-50)" }}
         aria-label="Confirm rename"
       >
         <Check size={12} />
@@ -228,8 +228,8 @@ export default function Sidebar({
         <div className="flex flex-col items-center gap-3">
           <Link
             href="/"
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-2xs transition hover:scale-105"
-            style={{ background: "var(--c-900)" }}
+            className="flex h-10 w-10 items-center justify-center rounded-xl shadow-2xs transition hover:scale-105"
+            style={{ background: "var(--c-900)", color: "var(--c-50)" }}
             title="ScioAI Home"
             aria-label="Return to ScioAI home"
           >
@@ -238,8 +238,8 @@ export default function Sidebar({
 
           <button
             onClick={onNewSession}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-xs transition hover:scale-105 active:scale-95"
-            style={{ background: "var(--c-900)" }}
+            className="flex h-10 w-10 items-center justify-center rounded-xl shadow-xs transition hover:scale-105 active:scale-95"
+            style={{ background: "var(--c-900)", color: "var(--c-50)" }}
             title="New Research Session (⌘N)"
             aria-label="New research session"
           >
@@ -272,11 +272,12 @@ export default function Sidebar({
                   title={s?.title ?? "Research Session"}
                   className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
                     isActive
-                      ? "text-white shadow-xs"
-                      : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      ? "shadow-xs"
+                      : "text-neutral-500 hover:bg-neutral-100"
                   }`}
                   style={{
                     background: isActive ? "var(--c-900)" : "transparent",
+                    color: isActive ? "var(--c-50)" : "var(--c-600)",
                   }}
                   aria-label={`Select session ${s?.title}`}
                 >
@@ -335,8 +336,8 @@ export default function Sidebar({
             className="group flex items-center gap-2.5"
           >
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-2xs transition group-hover:scale-105"
-              style={{ background: "var(--c-900)" }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg shadow-2xs transition group-hover:scale-105"
+              style={{ background: "var(--c-900)", color: "var(--c-50)" }}
               aria-hidden="true"
             >
               <Sparkles size={15} />
@@ -391,8 +392,8 @@ export default function Sidebar({
         <button
           onClick={onNewSession}
           id="sidebar-new-chat-btn"
-          className="group relative flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs transition hover:opacity-95 active:scale-[0.99]"
-          style={{ background: "var(--c-900)" }}
+          className="group relative flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold shadow-xs transition hover:opacity-95 active:scale-[0.99]"
+          style={{ background: "var(--c-900)", color: "var(--c-50)" }}
           aria-label="Create a new research session"
         >
           <div className="flex items-center gap-2">
@@ -405,7 +406,7 @@ export default function Sidebar({
           </div>
           <span
             className="rounded px-1.5 py-0.5 font-mono text-[10px]"
-            style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}
+            style={{ background: "rgba(128,128,128,0.25)", color: "var(--c-50)" }}
           >
             ⌘N
           </span>
@@ -523,12 +524,12 @@ export default function Sidebar({
                       tabIndex={0}
                       className={`group relative flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all duration-120 ${
                         isActive
-                          ? "shadow-xs text-white"
-                          : "hover:bg-neutral-100 dark:hover:bg-neutral-800/60"
+                          ? "shadow-xs"
+                          : "hover:bg-neutral-100"
                       }`}
                       style={{
                         background: isActive ? "var(--c-900)" : "transparent",
-                        color: isActive ? "#fff" : "var(--c-800)",
+                        color: isActive ? "var(--c-50)" : "var(--c-800)",
                       }}
                       onClick={() => {
                         if (!isRenaming) {
@@ -552,9 +553,9 @@ export default function Sidebar({
                         className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition`}
                         style={{
                           background: isActive
-                            ? "rgba(255, 255, 255, 0.16)"
+                            ? "rgba(128, 128, 128, 0.25)"
                             : "var(--c-100)",
-                          color: isActive ? "#fff" : "var(--c-600)",
+                          color: isActive ? "var(--c-50)" : "var(--c-600)",
                         }}
                         aria-hidden="true"
                       >
@@ -580,7 +581,7 @@ export default function Sidebar({
                             <p
                               className={`truncate text-xs sm:text-[13px] font-semibold leading-tight`}
                               style={{
-                                color: isActive ? "#fff" : "var(--c-900)",
+                                color: isActive ? "var(--c-50)" : "var(--c-900)",
                               }}
                             >
                               {session?.title ?? "Untitled Research"}
@@ -590,8 +591,9 @@ export default function Sidebar({
                                 className="text-[11px] font-medium"
                                 style={{
                                   color: isActive
-                                    ? "rgba(255, 255, 255, 0.7)"
+                                    ? "var(--c-50)"
                                     : "var(--c-500)",
+                                  opacity: isActive ? 0.8 : 1,
                                 }}
                               >
                                 {msgCount > 0

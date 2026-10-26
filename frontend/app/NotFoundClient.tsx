@@ -35,10 +35,10 @@ export default function NotFoundClient() {
               whileHover={{ rotate: 8, scale: 1.05 }}
               transition={{ duration: 0.2 }}
               className="flex h-9 w-9 items-center justify-center rounded-xl shadow-xs ring-1 ring-white/10"
-              style={{ background: "var(--c-900)" }}
+              style={{ background: "var(--c-900)", color: "var(--c-50)" }}
               aria-hidden="true"
             >
-              <Sparkles size={16} className="text-white" />
+              <Sparkles size={16} />
             </motion.div>
             <div className="flex items-center gap-2">
               <span
